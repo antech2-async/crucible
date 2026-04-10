@@ -102,7 +102,7 @@ export default function Arena() {
   return (
     <div
       className={cn(
-        'w-full max-w-7xl mt-12 grid grid-cols-1 md:grid-cols-12 gap-8 transition-colors duration-300',
+        'w-full max-w-7xl mx-auto mt-4 lg:mt-12 grid grid-cols-1 lg:grid-cols-12 gap-8 transition-colors duration-300',
         networkShock ? 'bg-red-500/5 shadow-[inset_0_0_100px_rgba(239,68,68,0.1)]' : '',
       )}
     >
@@ -136,7 +136,7 @@ export default function Arena() {
             transition: { staggerChildren: 0.1 },
           },
         }}
-        className="md:col-span-12 grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4"
+        className="lg:col-span-12 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4"
       >
         <MetricCard
           title="Value Secured"
@@ -164,7 +164,7 @@ export default function Arena() {
       </motion.div>
 
       {/* Main Agent Grid */}
-      <div className="md:col-span-8">
+      <div className="lg:col-span-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Users size={20} /> Active Agent Network
@@ -214,7 +214,7 @@ export default function Arena() {
       </div>
 
       {/* Live Activity Feed */}
-      <div className="md:col-span-4 space-y-8">
+      <div className="lg:col-span-4 space-y-8">
         <div>
           <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
             <Activity size={20} /> Live Verification
