@@ -9,16 +9,12 @@ export class WritingAgent {
   constructor(address: string, privateKey: string) {
     this.agentAddress = address;
     this.computeService = new ComputeService();
-    this.computeService.initialize(privateKey).catch(e => {
-       logger.error('Failed to initialize compute service for WritingAgent', e);
+    this.computeService.initialize(privateKey).catch((e) => {
+      logger.error('Failed to initialize compute service for WritingAgent', e);
     });
   }
 
-  async execute(taskInput: {
-    researchOutput: string;
-    taskId: string;
-    targetWords: number;
-  }) {
+  async execute(taskInput: { researchOutput: string; taskId: string; targetWords: number }) {
     logger.info(`WritingAgent (${this.agentAddress}) starting task ${taskInput.taskId}...`);
 
     const systemPrompt = `You are a professional writing agent. Your job is to take the provided research output and refine it into a polished, engaging narrative. Your final piece must be roughly ${taskInput.targetWords} words.`;
@@ -28,7 +24,7 @@ export class WritingAgent {
         systemPrompt,
         `Research Material:\n${taskInput.researchOutput}`,
         taskInput.taskId,
-        this.agentAddress
+        this.agentAddress,
       );
 
       logger.info(`WritingAgent completed inference. Attestation obtained: ${result.verified}`);
@@ -36,7 +32,7 @@ export class WritingAgent {
       return {
         content: result.output,
         outputHash: result.output, // Would be 0G Storage Hash
-        attestation: result.attestation
+        attestation: result.attestation,
       };
     } catch (error) {
       logger.error('Inference failed', error);

@@ -12,7 +12,11 @@ export class EventListener {
 
   constructor() {
     this.provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
-    this.escrowContract = new ethers.Contract(CONTRACT_ADDRESSES.TASK_ESCROW, TaskEscrowABI.abi, this.provider);
+    this.escrowContract = new ethers.Contract(
+      CONTRACT_ADDRESSES.TASK_ESCROW,
+      TaskEscrowABI.abi,
+      this.provider,
+    );
     this.assignmentEngine = new AssignmentEngine();
   }
 
@@ -21,20 +25,24 @@ export class EventListener {
 
     // When a task is posted, assign agents
     this.escrowContract.on('TaskPosted', async (taskId, poster, payment) => {
-      logger.info({ taskId: taskId.toString(), poster, payment: ethers.formatEther(payment) }, 'New task detected! Assigning agents...');
+      logger.info(
+        { taskId: taskId.toString(), poster, payment: ethers.formatEther(payment) },
+        'New task detected! Assigning agents...',
+      );
       await this.assignmentEngine.assignAgentsForTask(taskId.toString());
     });
 
-    // Note: In a production scenario we might listen for OutputSubmitted and track state, 
-    // but for the demo we assume the agents run synchronously or we trigger processTaskOutposts 
+    // Note: In a production scenario we might listen for OutputSubmitted and track state,
+    // but for the demo we assume the agents run synchronously or we trigger processTaskOutposts
     // manually whenVERIFYING state is reached. To simulate the engine catching the VERIFYING state,
     // we could listen to a mock event, but polling the open tasks or listening to OutputSubmitted suffices.
     this.escrowContract.on('OutputSubmitted', async (taskId, agent, outputHash) => {
       logger.info({ taskId: taskId.toString(), agent, outputHash }, 'Agent submitted output.');
-      
+
       // Check if all agents submitted to trigger judgment
-      const [,,,, status] = await this.escrowContract.getTaskBasic(taskId);
-      if (status === 2n || status === 2) { // TaskStatus.VERIFYING = 2
+      const [, , , , status] = await this.escrowContract.getTaskBasic(taskId);
+      if (status === 2n || status === 2) {
+        // TaskStatus.VERIFYING = 2
         logger.info(`Task ${taskId} is ready for verification. Dispatching to Judge...`);
         await this.assignmentEngine.processTaskOutputs(taskId.toString());
       }

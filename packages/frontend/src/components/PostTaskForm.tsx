@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { PlusCircle, Database, Coins, Clock, CheckCircle2, Send, Loader2 } from 'lucide-react';
 import { parseEther } from 'viem';

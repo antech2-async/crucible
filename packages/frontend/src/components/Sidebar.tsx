@@ -1,10 +1,12 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Users, Zap, Coins, Settings, ExternalLink } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Assuming cn utility for clean tailwind classes
+import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
   { name: 'Arena', href: '/', icon: LayoutDashboard },
@@ -40,23 +42,28 @@ export default function Sidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden',
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden active:scale-95',
                 isActive
-                  ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
+                  ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-[inset_0_0_10px_rgba(59,130,246,0.05)]'
                   : 'text-gray-400 hover:text-white hover:bg-white/5',
               )}
             >
               <item.icon
                 size={20}
                 className={cn(
-                  'transition-colors',
-                  isActive ? 'text-blue-400' : 'text-gray-500 group-hover:text-white',
+                  'transition-all duration-300',
+                  isActive
+                    ? 'text-blue-400 scale-110'
+                    : 'text-gray-500 group-hover:text-white group-hover:scale-110',
                 )}
               />
-              <span className="text-sm font-bold uppercase tracking-widest">{item.name}</span>
+              <span className="text-sm font-black uppercase tracking-widest">{item.name}</span>
 
               {isActive && (
-                <div className="absolute right-0 top-0 h-full w-1 bg-blue-500 glow-blue shadow-[0_0_10px_#3b82f6]" />
+                <motion.div
+                  layoutId="activeNav"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-blue-500 rounded-l shadow-[0_0_15px_#3b82f6]"
+                />
               )}
             </Link>
           );

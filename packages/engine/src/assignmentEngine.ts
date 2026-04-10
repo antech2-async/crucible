@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ethers } from 'ethers';
 import { StorageService } from './services/storageService';
 import { ComputeService } from './services/computeService';
@@ -25,11 +26,23 @@ export class AssignmentEngine {
   constructor() {
     this.provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
     this.signer = new ethers.Wallet(process.env.PRIVATE_KEY!, this.provider);
-    
-    this.registryContract = new ethers.Contract(CONTRACT_ADDRESSES.AGENT_REGISTRY, AgentRegistryABI.abi, this.signer);
-    this.escrowContract = new ethers.Contract(CONTRACT_ADDRESSES.TASK_ESCROW, TaskEscrowABI.abi, this.signer);
-    this.judgeContract = new ethers.Contract(CONTRACT_ADDRESSES.SLASHING_JUDGE, SlashingJudgeABI.abi, this.signer);
-    
+
+    this.registryContract = new ethers.Contract(
+      CONTRACT_ADDRESSES.AGENT_REGISTRY,
+      AgentRegistryABI.abi,
+      this.signer,
+    );
+    this.escrowContract = new ethers.Contract(
+      CONTRACT_ADDRESSES.TASK_ESCROW,
+      TaskEscrowABI.abi,
+      this.signer,
+    );
+    this.judgeContract = new ethers.Contract(
+      CONTRACT_ADDRESSES.SLASHING_JUDGE,
+      SlashingJudgeABI.abi,
+      this.signer,
+    );
+
     this.storageService = new StorageService(process.env.PRIVATE_KEY!);
     this.computeService = new ComputeService();
     this.trustScorer = new TrustScorer();
@@ -39,10 +52,10 @@ export class AssignmentEngine {
   async assignAgentsForTask(taskId: string): Promise<void> {
     try {
       logger.info(`Assigning agents for task ${taskId}`);
-      
+
       // 1. Get task criteria
-      const [,,,, , criteriaURI] = await this.escrowContract.getTaskBasic(taskId);
-      const criteria = await this.storageService.downloadHistory(criteriaURI) as any;
+      const [, , , , , criteriaURI] = await this.escrowContract.getTaskBasic(taskId);
+      const criteria = (await this.storageService.downloadHistory(criteriaURI)) as any;
 
       // 2. Find agents with required capabilities
       const requiredCaps = criteria.requiredCapabilities as string[];
@@ -70,16 +83,16 @@ export class AssignmentEngine {
       }
 
       // 5. Calculate required stakes
-      const stakes = selected.map(a => a.minStakeRequired);
+      const stakes = selected.map((a) => a.minStakeRequired);
       const totalStake = stakes.reduce((sum, s) => sum + BigInt(s), BigInt(0));
 
       // 6. Assign on-chain
       logger.info(`Dispatching tx to TaskEscrow for assignment, total stake: ${totalStake}`);
       const tx = await this.escrowContract.assignAgents(
         taskId,
-        selected.map(a => a.address),
+        selected.map((a) => a.address),
         stakes,
-        { value: totalStake }
+        { value: totalStake },
       );
       await tx.wait();
 
@@ -90,22 +103,24 @@ export class AssignmentEngine {
   }
 
   private async scoreAgents(agentAddresses: string[]) {
-    return Promise.all(agentAddresses.map(async (address) => {
-      const agentData = await this.registryContract.getAgent(address);
-      const history = await this.storageService.downloadHistory(
-        agentData.historyRootHash
-      ) as any;
-      const score = this.trustScorer.calculateScore(history);
+    return Promise.all(
+      agentAddresses.map(async (address) => {
+        const agentData = await this.registryContract.getAgent(address);
+        const history = (await this.storageService.downloadHistory(
+          agentData.historyRootHash,
+        )) as any;
+        const score = this.trustScorer.calculateScore(history);
 
-      return {
-        address,
-        score,
-        trustTier: agentData.trustTier,
-        minStakeRequired: agentData.minStakeRequired,
-        capabilities: agentData.capabilities,
-        history
-      };
-    }));
+        return {
+          address,
+          score,
+          trustTier: agentData.trustTier,
+          minStakeRequired: agentData.minStakeRequired,
+          capabilities: agentData.capabilities,
+          history,
+        };
+      }),
+    );
   }
 
   private selectBestAgents(scored: any[], requiredCaps: string[]) {
@@ -122,7 +137,9 @@ export class AssignmentEngine {
     const coveredCaps = new Set<string>();
 
     for (const agent of sorted) {
-      const matches = agent.capabilities.filter((c: string) => requiredCaps.includes(c) && !coveredCaps.has(c));
+      const matches = agent.capabilities.filter(
+        (c: string) => requiredCaps.includes(c) && !coveredCaps.has(c),
+      );
       if (matches.length > 0) {
         selected.push(agent);
         matches.forEach((m: string) => coveredCaps.add(m));
@@ -136,10 +153,10 @@ export class AssignmentEngine {
   async processTaskOutputs(taskId: string): Promise<void> {
     try {
       logger.info(`Processing outputs for task ${taskId}`);
-      
-      const [,,,, , criteriaURI] = await this.escrowContract.getTaskBasic(taskId);
+
+      const [, , , , , criteriaURI] = await this.escrowContract.getTaskBasic(taskId);
       const [agents] = await this.escrowContract.getTaskAgents(taskId);
-      const criteria = await this.storageService.downloadHistory(criteriaURI) as any;
+      const criteria = (await this.storageService.downloadHistory(criteriaURI)) as any;
 
       const criteriaResults: boolean[] = [];
       const newHistoryHashes: string[] = [];
@@ -147,14 +164,14 @@ export class AssignmentEngine {
 
       for (const agentAddress of agents) {
         const agentData = await this.registryContract.getAgent(agentAddress);
-        
+
         // Hardening: Fetch actual prompt-driven output from the escrow state
         // In a real flow, we'd watch OutputSubmitted events to get the storage hash
         const passed = await this.criteriaChecker.verifyCriteria(
-          agentAddress, 
-          taskId, 
-          criteria.criteria, 
-          "Observed Swarm Output Content"
+          agentAddress,
+          taskId,
+          criteria.criteria,
+          'Observed Swarm Output Content',
         );
         criteriaResults.push(passed);
 
@@ -165,8 +182,8 @@ export class AssignmentEngine {
             passed,
             collaborators: agents.filter((a: string) => a !== agentAddress),
             outputHash: '',
-            paymentReceived: '0'
-          }
+            paymentReceived: '0',
+          },
         );
         newHistoryHashes.push(newHash);
 
@@ -174,7 +191,7 @@ export class AssignmentEngine {
           BigInt(updatedHistory.totalTasks),
           BigInt(updatedHistory.completedHonestly),
           BigInt((updatedHistory.recentWindow as number[]).reduce((a, b) => a + b, 0)),
-          BigInt(updatedHistory.totalSlashEvents)
+          BigInt(updatedHistory.totalSlashEvents),
         );
       }
 
@@ -185,7 +202,7 @@ export class AssignmentEngine {
         agents,
         criteriaResults,
         newHistoryHashes,
-        newBehaviorData
+        newBehaviorData,
       );
       await tx.wait();
 

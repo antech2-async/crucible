@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createZGComputeNetworkBroker } from '@0glabs/0g-serving-broker';
 import { ethers } from 'ethers';
 
@@ -37,27 +38,28 @@ export class ComputeService {
     systemPrompt: string,
     userMessage: string,
     taskId: string,
-    agentId: string
+    agentId: string,
   ): Promise<VerifiedInferenceResult> {
-    
     if (!this.broker) {
       throw new Error('ComputeService not initialized. Call initialize(privateKey) first.');
     }
 
     if (!PROVIDER_ADDRESS) {
-      console.warn("No OG_COMPUTE_PROVIDER_ADDRESS provided. Halting inference as per strict 'no simulated responses' rule.");
-      throw new Error("No 0G Compute Provider. Halting.");
+      console.warn(
+        "No OG_COMPUTE_PROVIDER_ADDRESS provided. Halting inference as per strict 'no simulated responses' rule.",
+      );
+      throw new Error('No 0G Compute Provider. Halting.');
     }
 
     const response = await this.broker.inference.chat.completions.create({
       model: MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
+        { role: 'user', content: userMessage },
       ],
       provider: PROVIDER_ADDRESS,
       // Request TEE attestation - this guarantees cryptographic proof
-      verifiable: true
+      verifiable: true,
     });
 
     const content = response.choices[0].message.content;
@@ -70,7 +72,7 @@ export class ComputeService {
       attestation,
       model: MODEL,
       timestamp: Date.now(),
-      verified: !!attestation
+      verified: !!attestation,
     };
   }
 

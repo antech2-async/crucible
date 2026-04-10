@@ -9,8 +9,8 @@ export class ResearchAgent {
   constructor(address: string, privateKey: string) {
     this.agentAddress = address;
     this.computeService = new ComputeService();
-    this.computeService.initialize(privateKey).catch(e => {
-       logger.error('Failed to initialize compute service for ResearchAgent', e);
+    this.computeService.initialize(privateKey).catch((e) => {
+      logger.error('Failed to initialize compute service for ResearchAgent', e);
     });
   }
 
@@ -24,9 +24,8 @@ export class ResearchAgent {
     sources: string[];
     wordCount: number;
     outputHash: string;
-    attestation: any;
+    attestation: unknown;
   }> {
-
     logger.info(`ResearchAgent (${this.agentAddress}) starting task ${taskInput.taskId}...`);
 
     const systemPrompt = `You are a research agent. Your job is to research a topic and return structured findings. Always include at least ${taskInput.minSources} distinct sources. Your response must be at least ${taskInput.minWords} words. Format your response as JSON with fields: summary, sources (array), wordCount.`;
@@ -36,7 +35,7 @@ export class ResearchAgent {
         systemPrompt,
         `Research topic: ${taskInput.topic}`,
         taskInput.taskId,
-        this.agentAddress
+        this.agentAddress,
       );
 
       let parsed;
@@ -46,7 +45,11 @@ export class ResearchAgent {
         parsed = JSON.parse(jsonMatch[1]);
       } catch (e) {
         logger.warn('Failed to parse model output as JSON, attempting fallback parsing.');
-        parsed = { summary: result.output, sources: [], wordCount: result.output.split(' ').length };
+        parsed = {
+          summary: result.output,
+          sources: [],
+          wordCount: result.output.split(' ').length,
+        };
       }
 
       logger.info(`ResearchAgent completed inference. Attestation obtained: ${result.verified}`);
@@ -56,7 +59,7 @@ export class ResearchAgent {
         sources: parsed.sources || [],
         wordCount: parsed.wordCount || 0,
         outputHash: result.output, // In full implementation, this represents the 0G Storage Hash
-        attestation: result.attestation
+        attestation: result.attestation,
       };
     } catch (error) {
       logger.error('Inference failed', error);

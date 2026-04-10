@@ -22,6 +22,18 @@ const config: Config = {
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'radar': 'radar 4s linear infinite',
+        'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+      },
+      keyframes: {
+        radar: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+        'pulse-glow': {
+          '0%, 100%': { opacity: '1', filter: 'drop-shadow(0 0 5px rgba(52, 211, 153, 0.5))' },
+          '50%': { opacity: '0.8', filter: 'drop-shadow(0 0 15px rgba(52, 211, 153, 0.8))' },
+        }
       }
     },
   },

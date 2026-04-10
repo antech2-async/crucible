@@ -1,7 +1,9 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { Target, Clock, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Target, Clock, ShieldCheck, ChevronRight, Binary } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function TaskCard() {
   // Mock data for scaffolding
@@ -19,9 +21,14 @@ export default function TaskCard() {
   };
 
   return (
-    <div className="glass rounded-2xl p-6 border border-white/5 relative overflow-hidden group">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ y: -4 }}
+      className="glass rounded-2xl p-6 border border-white/5 relative overflow-hidden group shadow-xl"
+    >
       {/* Background Decor */}
-      <div className="absolute -right-4 -top-4 w-20 h-20 bg-blue-500/10 blur-2xl group-hover:bg-blue-500/20 transition-all rounded-full" />
+      <div className="absolute -right-8 -top-8 w-32 h-32 bg-blue-500/5 blur-3xl group-hover:bg-blue-500/10 transition-all rounded-full pointer-events-none" />
 
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
@@ -50,15 +57,32 @@ export default function TaskCard() {
           Verification Criteria
         </p>
         {task.criteria.map((c, i) => (
-          <div key={i} className="flex items-center justify-between">
+          <motion.div
+            key={i}
+            initial={{ x: -10, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: i * 0.1 }}
+            className="flex items-center justify-between"
+          >
             <div className="flex items-center gap-2">
-              <ShieldCheck size={14} className={c.passed ? 'text-green-500' : 'text-gray-500'} />
-              <span className="text-xs text-gray-300">{c.name}</span>
+              <div
+                className={c.passed ? 'p-1 rounded bg-green-500/10' : 'p-1 rounded bg-gray-500/10'}
+              >
+                {c.name === 'TEE Proof' ? (
+                  <Binary size={12} className={c.passed ? 'text-green-500' : 'text-gray-500'} />
+                ) : (
+                  <ShieldCheck
+                    size={12}
+                    className={c.passed ? 'text-green-500' : 'text-gray-500'}
+                  />
+                )}
+              </div>
+              <span className="text-[11px] text-gray-300 font-medium">{c.name}</span>
             </div>
-            <span className="text-xs font-mono text-gray-400 font-bold tracking-tight">
+            <span className="text-[11px] font-mono text-gray-400 font-bold tracking-tight bg-white/5 px-2 py-0.5 rounded border border-white/5">
               {c.value}
             </span>
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -69,16 +93,20 @@ export default function TaskCard() {
       </button>
 
       {/* Bottom Status */}
-      <div className="mt-4 flex items-center justify-center gap-2">
-        <div className="flex gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50" />
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500/20" />
+      <div className="mt-4 flex items-center justify-center gap-3 py-2 border-t border-white/5">
+        <div className="flex gap-1.5 items-center">
+          <motion.span
+            animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+            transition={{ repeat: Infinity, duration: 2 }}
+            className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]"
+          />
+          <span className="w-1 h-1 rounded-full bg-blue-400/30" />
+          <span className="w-1 h-1 rounded-full bg-blue-400/20" />
         </div>
-        <span className="text-[9px] font-bold text-blue-500 uppercase tracking-[0.2em]">
-          Judgement in progress
+        <span className="text-[9px] font-black text-blue-400 uppercase tracking-[0.3em] font-mono animate-pulse-glow">
+          Judgement Processing
         </span>
       </div>
-    </div>
+    </motion.div>
   );
 }

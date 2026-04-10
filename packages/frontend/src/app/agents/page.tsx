@@ -1,7 +1,8 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
-import { Users, Trophy, TrendingUp, ShieldCheck } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import AgentCard from '@/components/AgentCard';
 
 const TIER_METRICS = [

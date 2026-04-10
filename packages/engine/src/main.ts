@@ -14,34 +14,37 @@ async function main() {
   const provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
   const coordinatorWallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const storageService = new StorageService(process.env.PRIVATE_KEY!);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const computeService = new ComputeService();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const assignmentEngine = new AssignmentEngine();
 
   // Initialize Demo Agents
   const defaultPk = '0x1234567890123456789012345678901234567890123456789012345678901234';
   const agents = [
     new ResearchAgent(ethers.Wallet.createRandom().address, defaultPk),
-    new BadActorAgent(ethers.Wallet.createRandom().address, defaultPk)
+    new BadActorAgent(ethers.Wallet.createRandom().address, defaultPk),
   ];
 
   logger.info('Registering agents and checking gas stipends...');
   for (const agent of agents) {
     const stipend = ethers.parseEther('0.005');
     const balance = await provider.getBalance(agent.agentAddress);
-    
+
     if (balance < stipend) {
       logger.info(`Sending gas stipend to ${agent.agentAddress}...`);
       await coordinatorWallet.sendTransaction({
         to: agent.agentAddress,
-        value: stipend - balance
+        value: stipend - balance,
       });
     }
   }
 
   // Start the task detection loop
   logger.info('Crucible Engine is now listening for TaskEscrow events on 0G Galileo...');
-  
+
   // NOTE: In a real implementation, we would use ethers contract listeners:
   // const escrow = new ethers.Contract(CONTRACT_ADDRESS, ESCROW_ABI, provider);
   // escrow.on('TaskPosted', (taskId, bounty) => { ... });

@@ -1,6 +1,7 @@
 import { ResearchAgent } from './researchAgent';
 import { logger } from '@crucible/shared';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export class BadActorAgent {
   readonly capabilities = ['research'];
   private defectionRate = 0.4; // defects 40% of the time
@@ -16,8 +17,10 @@ export class BadActorAgent {
     const shouldDefect = Math.random() < this.defectionRate;
 
     if (shouldDefect) {
-      logger.warn(`🚨 BadActorAgent (${this.agentAddress}) decided to DEFECT on task ${taskInput.taskId}`);
-      
+      logger.warn(
+        `🚨 BadActorAgent (${this.agentAddress}) decided to DEFECT on task ${taskInput.taskId}`,
+      );
+
       // Return garbage output that deliberately fails verification checks
       // Missing sources, inadequate word count, and NO verifiable TEE attestation
       return {
@@ -25,11 +28,13 @@ export class BadActorAgent {
         sources: [],
         wordCount: 11,
         outputHash: 'garbage_hash_defective',
-        attestation: null
+        attestation: null,
       };
     }
 
-    logger.info(`BadActorAgent (${this.agentAddress}) decided to act HONESTLY on task ${taskInput.taskId}`);
+    logger.info(
+      `BadActorAgent (${this.agentAddress}) decided to act HONESTLY on task ${taskInput.taskId}`,
+    );
     // Honest output fallback
     return this.honestAgentFallback.execute(taskInput);
   }

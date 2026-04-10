@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Shield, History, ExternalLink, Award, AlertOctagon, Cpu, ArrowLeft } from 'lucide-react';

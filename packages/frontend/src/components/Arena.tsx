@@ -1,8 +1,10 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
-import { Shield, Zap, Activity, Users, AlertTriangle } from 'lucide-react';
-import { useReadContract, useWatchContractEvent, useBalance } from 'wagmi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Shield, Users, Zap, Activity, AlertTriangle } from 'lucide-react';
+import { useReadContract, useBalance, useWatchContractEvent } from 'wagmi';
 import { AGENT_REGISTRY_ABI, TASK_ESCROW_ABI, CONTRACT_ADDRESSES } from '@crucible/shared';
 import { cn } from '@/lib/utils';
 import AgentCard from './AgentCard';
@@ -105,40 +107,61 @@ export default function Arena() {
       )}
     >
       {/* Network Alert Banner */}
-      {networkShock && (
-        <div className="md:col-span-12 p-3 bg-red-600/20 border border-red-600/30 rounded-xl flex items-center justify-center gap-3 animate-pulse border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-          <AlertTriangle className="text-red-500" size={18} />
-          <span className="text-[11px] font-black uppercase text-red-500 tracking-[0.3em] font-mono italic">
-            Emergency Alert: Agent Defection Detected • Initializing Slashing Judge
-          </span>
-        </div>
-      )}
+      <AnimatePresence>
+        {networkShock && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="md:col-span-12 overflow-hidden"
+          >
+            <div className="p-3 bg-red-600/20 border border-red-600/30 rounded-xl flex items-center justify-center gap-3 animate-pulse border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+              <AlertTriangle className="text-red-500" size={18} />
+              <span className="text-[11px] font-black uppercase text-red-500 tracking-[0.3em] font-mono italic">
+                Emergency Alert: Agent Defection Detected • Initializing Slashing Judge
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Metrics Row */}
-      <div className="md:col-span-12 grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={{
+          hidden: { opacity: 0 },
+          show: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 },
+          },
+        }}
+        className="md:col-span-12 grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4"
+      >
         <MetricCard
           title="Value Secured"
           value={`${escrowBalance ? Number(escrowBalance.formatted).toFixed(2) : '0.00'} ${escrowBalance?.symbol || '0G'}`}
-          icon={<Shield className="text-blue-500" />}
+          icon={<Shield className="text-blue-400" />}
           trend="Live"
         />
         <MetricCard
           title="Active Agents"
           value={totalAgents?.toString() || '0'}
-          icon={<Users className="text-green-500" />}
+          icon={<Users className="text-emerald-400" />}
           shock={networkShock}
         />
         <MetricCard
           title="Tasks Pipeline"
           value={taskCount?.toString() || '0'}
-          icon={<Zap className="text-yellow-500" />}
+          icon={<Zap className="text-amber-400" />}
         />
         <MetricCard
           title="Network Health"
           value={networkShock ? '92.4%' : '100%'}
-          icon={<Activity className={networkShock ? 'text-red-500' : 'text-purple-500'} />}
+          icon={<Activity className={networkShock ? 'text-red-500' : 'text-fuchsia-400'} />}
+          shock={networkShock}
         />
-      </div>
+      </motion.div>
 
       {/* Main Agent Grid */}
       <div className="md:col-span-8">
@@ -153,16 +176,39 @@ export default function Arena() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {agents.length === 0 ? (
-            <div className="col-span-full py-20 text-center glass rounded-2xl border border-white/5 opacity-50">
-              <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">
-                Scanning 0G Network...
-              </p>
-              <p className="text-[10px] text-blue-500 mt-2 font-mono italic">
-                Searching for initialized INFT signatures
-              </p>
-            </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="col-span-full py-20 text-center glass rounded-2xl border border-white/5 relative overflow-hidden group"
+            >
+              {/* Radar Background Animation */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+                <div className="w-[400px] h-[400px] rounded-full border border-blue-500/30 relative">
+                  <div className="absolute inset-0 w-full h-full rounded-full border border-blue-500/10 animate-ping" />
+                  <div className="absolute top-1/2 left-1/2 w-full h-[1px] bg-gradient-to-r from-transparent to-blue-500 origin-left animate-radar" />
+                  {/* Concentric Circles */}
+                  <div className="absolute inset-[25%] rounded-full border border-blue-500/10" />
+                  <div className="absolute inset-[50%] rounded-full border border-blue-500/10" />
+                  <div className="absolute inset-[75%] rounded-full border border-blue-500/10" />
+                </div>
+              </div>
+
+              <div className="relative z-10">
+                <p className="text-gray-400 font-black uppercase text-sm tracking-[0.4em] mb-2 animate-pulse">
+                  Scanning 0G Network
+                </p>
+                <div className="flex items-center justify-center gap-2 text-[10px] text-blue-400 font-mono italic uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  Synchronizing INFT Signatures...
+                </div>
+              </div>
+            </motion.div>
           ) : (
-            agents.map((agent, i) => <AgentCard key={i} agent={agent} />)
+            <AnimatePresence>
+              {agents.map((agent, i) => (
+                <AgentCard key={agent.id || i} agent={agent} />
+              ))}
+            </AnimatePresence>
           )}
         </div>
       </div>
@@ -206,16 +252,43 @@ export default function Arena() {
   );
 }
 
-function MetricCard({ title, value, icon, trend }: any) {
+function MetricCard({ title, value, icon, trend, shock }: any) {
   return (
-    <div className="glass rounded-2xl p-5 hover:translate-y-[-2px] transition-transform">
-      <div className="flex justify-between items-start mb-2">
-        <div className="p-2 bg-gray-900/50 rounded-lg">{icon}</div>
-        {trend && <span className="text-xs font-bold text-green-400">{trend}</span>}
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 10 },
+        show: { opacity: 1, y: 0 },
+      }}
+      whileHover={{ scale: 1.02 }}
+      className={cn(
+        'glass rounded-2xl p-5 border border-white/5 relative overflow-hidden',
+        shock
+          ? 'animate-pulse border-red-500/50 bg-red-500/5 shadow-[0_0_20px_rgba(239,68,68,0.1)]'
+          : 'hover:border-white/10',
+      )}
+    >
+      <div className="flex justify-between items-start mb-3 relative z-10">
+        <div className="p-2 bg-white/5 rounded-xl border border-white/10 shadow-inner">{icon}</div>
+        {trend && (
+          <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 shadow-sm animate-pulse-glow uppercase tracking-wider">
+            {trend}
+          </span>
+        )}
       </div>
-      <p className="text-xs text-gray-500 uppercase tracking-wider">{title}</p>
-      <p className="text-2xl font-bold mt-1">{value}</p>
-    </div>
+      <p className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold mb-1 relative z-10">
+        {title}
+      </p>
+      <p className="text-2xl font-black font-mono tracking-tighter relative z-10">{value}</p>
+
+      {/* Decorative background grid effect */}
+      <div
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)',
+          backgroundSize: '12px 12px',
+        }}
+      />
+    </motion.div>
   );
 }
 

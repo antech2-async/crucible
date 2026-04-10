@@ -13,7 +13,7 @@ export interface AgentHistory {
   completedHonestly: number;
   totalSlashEvents: number;
   totalDisputes: number;
-  recentWindow: number[];          // last 10 results (0 or 1)
+  recentWindow: number[]; // last 10 results (0 or 1)
   avgResponseTimeMs: number;
   taskHistory: TaskHistoryEntry[];
 }
@@ -67,8 +67,8 @@ export class StorageService {
     if (treeErr) throw new Error(`Merkle tree error: ${treeErr}`);
 
     const rootHash = tree!.rootHash();
-    // @ts-ignore
-    const [txHash, uploadErr] = await this.indexer.upload(memData, this.signer);
+    // @ts-expect-error SDK typing mismatch
+    const [, uploadErr] = await this.indexer.upload(memData, this.signer);
     if (uploadErr) throw new Error(`Upload error: ${uploadErr}`);
 
     console.log(`History uploaded. Root hash: ${rootHash}`);
@@ -76,7 +76,7 @@ export class StorageService {
   }
 
   async downloadHistory(rootHash: string): Promise<AgentHistory> {
-    // @ts-ignore
+    // @ts-expect-error SDK typing mismatch
     const [data, err] = await this.indexer.download(rootHash);
     if (err) throw new Error(`Download error: ${err}`);
 
@@ -92,8 +92,8 @@ export class StorageService {
     if (treeErr) throw new Error(`Merkle tree error: ${treeErr}`);
 
     const rootHash = tree!.rootHash();
-    // @ts-ignore
-    const [txHash, uploadErr] = await this.indexer.upload(memData, this.signer);
+    // @ts-expect-error SDK typing mismatch
+    const [, uploadErr] = await this.indexer.upload(memData, this.signer);
     if (uploadErr) throw new Error(`Upload error: ${uploadErr}`);
 
     return rootHash!;
@@ -101,7 +101,7 @@ export class StorageService {
 
   async updateAgentHistory(
     existingHash: string,
-    taskResult: TaskResult
+    taskResult: TaskResult,
   ): Promise<{ newHash: string; updatedHistory: AgentHistory }> {
     const history = await this.downloadHistory(existingHash);
 
@@ -128,7 +128,7 @@ export class StorageService {
       passed: taskResult.passed,
       collaborators: taskResult.collaborators,
       outputHash: taskResult.outputHash,
-      paymentReceived: taskResult.paymentReceived
+      paymentReceived: taskResult.paymentReceived,
     });
 
     // Keep task history at max 100 entries
