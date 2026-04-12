@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Tasks', href: '/tasks', icon: Zap },
   { name: 'Staking', href: '/stake', icon: Coins },
+  { name: 'Admin Hub', href: '/admin', icon: Settings },
 ];
 
 interface SidebarProps {
@@ -123,6 +124,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <p className="text-[9px] text-gray-600 font-mono truncate">
               Connected RPC: evmrpc-testnet.0g.ai
             </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-amber-400/5 border border-amber-400/10">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[9px] font-black italic text-amber-500 uppercase tracking-[0.2em]">
+                Slashed Treasury
+              </span>
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+            </div>
+            <div className="flex items-end gap-1">
+              <span className="text-lg font-black tracking-tighter text-amber-400">1.240</span>
+              <span className="text-[9px] font-bold text-amber-600 mb-1">0G</span>
+            </div>
           </div>
         </div>
       </motion.aside>

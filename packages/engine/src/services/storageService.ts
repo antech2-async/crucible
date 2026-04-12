@@ -1,5 +1,6 @@
-import { Indexer, MemData } from '@0gfoundation/0g-ts-sdk';
+import { Indexer, MemData } from '@0glabs/0g-ts-sdk';
 import { ethers } from 'ethers';
+import { costTracker } from '../costTracker';
 
 const INDEXER_RPC = process.env.OG_STORAGE_INDEXER_URL!;
 const RPC_URL = process.env.OG_RPC_URL!;
@@ -7,6 +8,7 @@ const RPC_URL = process.env.OG_RPC_URL!;
 export interface AgentHistory {
   agentId: string;
   inftTokenId: number;
+  agentClass: 'NATIVE' | 'EXTERNAL';
   version: number;
   updatedAt: number;
   totalTasks: number;
@@ -52,6 +54,8 @@ export interface Criterion {
 export class StorageService {
   private indexer: Indexer;
   private signer: ethers.Wallet;
+  // Local mapping: bytes32 on-chain hash → original 0G root hash string (Section 8 spec)
+  private hashMapping: Map<string, string> = new Map();
 
   constructor(privateKey: string) {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -59,7 +63,7 @@ export class StorageService {
     this.indexer = new Indexer(INDEXER_RPC);
   }
 
-  async uploadHistory(historyData: AgentHistory): Promise<string> {
+  async uploadHistory(historyData: AgentHistory): Promise<{ rootHash: string; bytes32Hash: string }> {
     const jsonString = JSON.stringify(historyData);
     const memData = new MemData(Buffer.from(jsonString));
 
@@ -71,11 +75,17 @@ export class StorageService {
     const [, uploadErr] = await this.indexer.upload(memData, this.signer);
     if (uploadErr) throw new Error(`Upload error: ${uploadErr}`);
 
-    console.log(`History uploaded. Root hash: ${rootHash}`);
-    return rootHash!;
+    const bytes32Hash = ethers.keccak256(ethers.toUtf8Bytes(rootHash));
+    this.hashMapping.set(bytes32Hash, rootHash);
+    
+    // Track cost (approx 0.001 OG per write based on mock network specs)
+    costTracker.addStorageSpend(ethers.parseEther('0.001'));
+
+    return { rootHash: rootHash!, bytes32Hash };
   }
 
-  async downloadHistory(rootHash: string): Promise<AgentHistory> {
+  async downloadHistory(rootHashOrBytes32: string): Promise<AgentHistory> {
+    const rootHash = this.hashMapping.get(rootHashOrBytes32) ?? rootHashOrBytes32;
     // @ts-expect-error SDK typing mismatch
     const [data, err] = await this.indexer.download(rootHash);
     if (err) throw new Error(`Download error: ${err}`);
@@ -95,7 +105,8 @@ export class StorageService {
     // @ts-expect-error SDK typing mismatch
     const [, uploadErr] = await this.indexer.upload(memData, this.signer);
     if (uploadErr) throw new Error(`Upload error: ${uploadErr}`);
-
+    
+    costTracker.recordStorageWrite(); // Section 18: ~0.001 OG per write
     return rootHash!;
   }
 
@@ -136,7 +147,7 @@ export class StorageService {
       history.taskHistory = history.taskHistory.slice(-100);
     }
 
-    const newHash = await this.uploadHistory(history);
-    return { newHash, updatedHistory: history };
+    const newHashes = await this.uploadHistory(history);
+    return { newHash: newHashes.bytes32Hash, updatedHistory: history };
   }
 }

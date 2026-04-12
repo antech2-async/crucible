@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { logger } from '@crucible/shared';
 import { AssignmentEngine } from './assignmentEngine';
+import { PipelineCoordinator } from './pipelineCoordinator';
 
 import TaskEscrowABI from '../../contracts/artifacts/contracts/TaskEscrow.sol/TaskEscrow.json';
 import { CONTRACT_ADDRESSES } from '@crucible/shared';
@@ -9,6 +10,7 @@ export class EventListener {
   private provider: ethers.JsonRpcProvider;
   private escrowContract: ethers.Contract;
   private assignmentEngine: AssignmentEngine;
+  private pipelineCoordinator: PipelineCoordinator;
 
   constructor() {
     this.provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
@@ -18,6 +20,9 @@ export class EventListener {
       this.provider,
     );
     this.assignmentEngine = new AssignmentEngine();
+    
+    const signer = new ethers.Wallet(process.env.PRIVATE_KEY!, this.provider);
+    this.pipelineCoordinator = new PipelineCoordinator(this.provider, signer);
   }
 
   startListening() {
@@ -30,6 +35,19 @@ export class EventListener {
         'New task detected! Assigning agents...',
       );
       await this.assignmentEngine.assignAgentsForTask(taskId.toString());
+    });
+
+    // Handle Sequential Pipeline Advancement (Spec Section 13)
+    this.escrowContract.on('PipelineAdvanced', async (taskId, stage, nextAgent) => {
+      logger.info(
+        { taskId: taskId.toString(), stage: Number(stage), nextAgent },
+        'Pipeline advanced! Triggering next swarm stage...',
+      );
+      await this.pipelineCoordinator.triggerNextStage(
+        taskId.toString(),
+        Number(stage),
+        nextAgent,
+      );
     });
 
     // Note: In a production scenario we might listen for OutputSubmitted and track state,

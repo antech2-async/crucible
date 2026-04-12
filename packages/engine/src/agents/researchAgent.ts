@@ -19,6 +19,7 @@ export class ResearchAgent {
     taskId: string;
     minSources: number;
     minWords: number;
+    previousContext?: string;
   }): Promise<{
     content: string;
     sources: string[];
@@ -28,7 +29,11 @@ export class ResearchAgent {
   }> {
     logger.info(`ResearchAgent (${this.agentAddress}) starting task ${taskInput.taskId}...`);
 
-    const systemPrompt = `You are a research agent. Your job is to research a topic and return structured findings. Always include at least ${taskInput.minSources} distinct sources. Your response must be at least ${taskInput.minWords} words. Format your response as JSON with fields: summary, sources (array), wordCount.`;
+    const contextPrompt = taskInput.previousContext 
+      ? `\n\nCONTINUATION TASK: Build upon the previous agent's research findings provided below. DO NOT REPEAT their work, but extend it with new insights.\n\n[PREVIOUS AGENT OUTPUT]:\n${taskInput.previousContext}`
+      : "";
+
+    const systemPrompt = `You are a research agent. Your job is to research a topic and return structured findings. Always include at least ${taskInput.minSources} distinct sources. Your response must be at least ${taskInput.minWords} words. Format your response as JSON with fields: summary, sources (array), wordCount.${contextPrompt}`;
 
     try {
       const result = await this.computeService.runAgentInference(
@@ -43,7 +48,7 @@ export class ResearchAgent {
         // Find JSON block if wrapped in markdown
         const jsonMatch = result.output.match(/```json\n([\s\S]*)\n```/) || [null, result.output];
         parsed = JSON.parse(jsonMatch[1]);
-      } catch (e) {
+      } catch {
         logger.warn('Failed to parse model output as JSON, attempting fallback parsing.');
         parsed = {
           summary: result.output,

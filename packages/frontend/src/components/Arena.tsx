@@ -14,6 +14,7 @@ export default function Arena() {
   const [agents, setAgents] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [networkShock, setNetworkShock] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
 
   // 1. Fetch Summary Metrics
   const { data: totalAgents } = useReadContract({
@@ -80,15 +81,16 @@ export default function Arena() {
         const agentList = [];
         // Iterate through valid agent addresses from the contract
         for (const addr of agentAddresses) {
-          // In a real prod environment, use useReadContracts for better batching
-          // Here we follow the logic of iterative retrieval for clarity
+          // In production, we'd use multicall. Here we simulate the fetch for high-fidelity data.
+          // Note: for a truly production-grade app, we'd use useReadContracts hook above.
           agentList.push({
-            id: addr,
-            tier: 0, // In production, we'd fetch this from the agent struct
-            score: 50 + Math.random() * 5, // Bayesian placeholder until contract simulation completes
-            tasks: 0,
+            id: addr.slice(0, 10),
+            tier: Math.floor(Math.random() * 5), // Mock for demo sweep, would be registry.getAgent(addr).trustTier
+            score: 0.75 + Math.random() * 0.2, 
+            tasks: 12,
             status: 'idle',
-            window: [1, 1, 1, 1],
+            window: [1, 1, 0, 1, 1, 1, 1, 1, 1, 1],
+            class: Math.random() > 0.5 ? 'native' : 'external',
           });
         }
         setAgents(agentList);
@@ -169,12 +171,31 @@ export default function Arena() {
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Users size={20} /> Active Agent Network
           </h2>
-          <span className="text-xs text-gray-400 font-mono tracking-tighter uppercase italic">
-            TEE Verified Nodes
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-gray-400 font-mono tracking-tighter uppercase italic">
+              TEE Verified Nodes
+            </span>
+            <button 
+              onClick={() => setAdminMode(!adminMode)}
+              className={cn(
+                "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all",
+                adminMode ? "bg-red-500/20 border-red-500/50 text-red-500" : "bg-white/5 border-white/10 text-gray-500 hover:text-white"
+              )}
+            >
+              {adminMode ? "Exit Admin" : "Admin Portal"}
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {adminMode ? (
+          <div className="glass rounded-3xl p-12 border border-red-500/20 text-center">
+            <Shield className="text-red-500 mx-auto mb-4" size={48} />
+            <h3 className="text-xl font-bold text-white mb-2 uppercase italic tracking-tighter">Dispute Resolution Protocol</h3>
+            <p className="text-sm text-gray-500 mb-8 max-w-md mx-auto">Moderator access enabled. View and resolve contested outcomes from the 0G network.</p>
+            <div className="bg-white/5 rounded-xl p-4 text-xs font-mono text-gray-400 italic">No pending disputes found in active epoch.</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {agents.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -210,7 +231,8 @@ export default function Arena() {
               ))}
             </AnimatePresence>
           )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Live Activity Feed */}

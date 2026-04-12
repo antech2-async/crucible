@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { logger } from '@crucible/shared';
 import TaskEscrowABI from '../../contracts/artifacts/contracts/TaskEscrow.sol/TaskEscrow.json';
 import { CONTRACT_ADDRESSES } from '@crucible/shared';
+import { StorageService } from './services/storageService';
 
 // Import our Swarm Agents
 import { ResearchAgent } from './agents/researchAgent';
@@ -17,15 +18,16 @@ export class AgentRunner {
 
   // A local map of the Owner's running agent swarms
   // Maps agentAddress -> Agent Instance
-  private localSwarm: Map<string, unknown> = new Map();
+  private localSwarm: Map<string, any> = new Map();
+  private storageService: StorageService;
 
   constructor() {
     this.provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
-    this.escrowContract = new ethers.Contract(
       CONTRACT_ADDRESSES.TASK_ESCROW,
       TaskEscrowABI.abi,
       this.provider,
     );
+    this.storageService = new StorageService(process.env.PRIVATE_KEY!);
   }
 
   registerLocalAgent(address: string, agentInstance: unknown) {
@@ -47,12 +49,31 @@ export class AgentRunner {
           );
 
           try {
-            // Wake up the local agent
+            // OCD: Check for sequential context
+            const taskData = await this.escrowContract.tasks(taskId);
+            const isSequential = taskData.isSequential;
+            const currentStage = taskData.currentPipelineStage;
+            
+            let previousContext = "";
+            if (isSequential && currentStage > 0) {
+                logger.info(`🔗 Sequential Stage detected (${currentStage}). Fetching previous context...`);
+                const previousAgent = await this.escrowContract.getTaskAgents(taskId).then(res => res[0][currentStage - 1]);
+                const prevCID = await this.escrowContract.agentOutputHashes(taskId, previousAgent);
+                
+                if (prevCID) {
+                    const download = await this.storageService.downloadHistory(prevCID);
+                    previousContext = typeof download === 'string' ? download : JSON.stringify(download);
+                    logger.info(`✅ Sequential Context linked for Agent ${assignedAddr}`);
+                }
+            }
+
+            // Wake up the local agent with real context
             const output = await localAgent.execute({
-              topic: '0G Network State Channels', // Fetch from criteria URI in production
+              topic: 'Autonomous Swarm Research', // In production, derived from CriteriaURI
               taskId: taskId.toString(),
               minSources: 5,
               minWords: 500,
+              previousContext: previousContext
             });
 
             logger.info(`Agent ${assignedAddr} finished inference. Submitting output to chain.`);

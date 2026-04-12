@@ -8,8 +8,8 @@ const nextConfig = {
   },
   typescript: {
     // We ignore type errors during the build to ensure the demo is accessible
-    ignoreBuildErrors: true, 
-  }
+    ignoreBuildErrors: true,
+  },
 };
 
 export default nextConfig;

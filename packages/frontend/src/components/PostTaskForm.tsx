@@ -150,15 +150,44 @@ export default function PostTaskForm() {
 
         <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
           <p className="text-[9px] font-black uppercase text-blue-500 tracking-[0.2em] mb-4">
-            Autonomous Verification Policy
+            Autonomous Verification Policy (OCD Builder)
           </p>
-          <div className="space-y-4">
-            <CriteriaRange label="Minimum Result Length" value={formData.minWords} unit="Words" />
-            <CriteriaRange
-              label="Source Integrity Check"
-              value={formData.minSources}
-              unit="Sourced Links"
-            />
+          <div className="space-y-6">
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  Minimum Result Length
+                </span>
+                <span className="text-xs font-mono font-bold text-blue-400">{formData.minWords} Words</span>
+              </div>
+              <input
+                type="range"
+                min="100"
+                max="2000"
+                step="100"
+                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                value={formData.minWords}
+                onChange={(e) => setFormData({ ...formData, minWords: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  Source Integrity Check
+                </span>
+                <span className="text-xs font-mono font-bold text-cyan-400">{formData.minSources} Links</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="20"
+                step="1"
+                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                value={formData.minSources}
+                onChange={(e) => setFormData({ ...formData, minSources: e.target.value })}
+              />
+            </div>
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import { StorageService } from './services/storageService';
 import { ComputeService } from './services/computeService';
 import { TrustScorer } from './trustScorer';
 import { CriteriaChecker } from './criteriaChecker';
+import { costTracker } from './costTracker';
 import { logger } from '@crucible/shared';
 
 // Load ABIs
@@ -109,11 +110,23 @@ export class AssignmentEngine {
         const history = (await this.storageService.downloadHistory(
           agentData.historyRootHash,
         )) as any;
-        const score = this.trustScorer.calculateScore(history);
+        
+        // Multi-Factor Meritocratic Scoring (Spec Section 15)
+        // Score = TrustScore * SpeedScore * CostScore
+        const trustScore = this.trustScorer.calculateScore(history);
+        
+        // SpeedScore: Normalized 0-1 based on average latency in history
+        // CostScore: Inversely proportional to staking multiplier (higher tier = lower cost/multiplier)
+        const speedScore = history.avgLatency ? Math.min(1, 5000 / history.avgLatency) : 0.8;
+        const multiplier = this.trustScorer.getStakeMultiplier(trustScore, history.agentClass);
+        const costScore = 1 / multiplier; 
+
+        const compositeScore = trustScore * speedScore * costScore;
 
         return {
           address,
-          score,
+          score: compositeScore,
+          trustScore,
           trustTier: agentData.trustTier,
           minStakeRequired: agentData.minStakeRequired,
           capabilities: agentData.capabilities,
@@ -124,8 +137,7 @@ export class AssignmentEngine {
   }
 
   private selectBestAgents(scored: any[], requiredCaps: string[]) {
-    // Pessimism Hardening: Prioritize agents who possess the MOST required capabilities
-    // to minimize swarm fragmentation.
+    // Meritocratic Sorting: Prioritize capacity first, then composite merit score
     const sorted = scored.sort((a, b) => {
       const aMatchCount = a.capabilities.filter((c: string) => requiredCaps.includes(c)).length;
       const bMatchCount = b.capabilities.filter((c: string) => requiredCaps.includes(c)).length;
@@ -154,7 +166,7 @@ export class AssignmentEngine {
     try {
       logger.info(`Processing outputs for task ${taskId}`);
 
-      const [, , , , , criteriaURI] = await this.escrowContract.getTaskBasic(taskId);
+      const [, totalPayment, , , , criteriaURI] = await this.escrowContract.getTaskBasic(taskId);
       const [agents] = await this.escrowContract.getTaskAgents(taskId);
       const criteria = (await this.storageService.downloadHistory(criteriaURI)) as any;
 
@@ -165,13 +177,26 @@ export class AssignmentEngine {
       for (const agentAddress of agents) {
         const agentData = await this.registryContract.getAgent(agentAddress);
 
-        // Hardening: Fetch actual prompt-driven output from the escrow state
-        // In a real flow, we'd watch OutputSubmitted events to get the storage hash
+        // OCD Hardening: Fetch actual content CID from the escrow state
+        const outputCID = await this.escrowContract.agentOutputHashes(taskId, agentAddress);
+        
+        let actualContent = "";
+        try {
+            if (outputCID && outputCID !== "") {
+                const download = await this.storageService.downloadHistory(outputCID);
+                actualContent = typeof download === 'string' ? download : JSON.stringify(download);
+            } else {
+                logger.warn(`No output hash found for ${agentAddress} on task ${taskId}`);
+            }
+        } catch (err) {
+            logger.error({ err, outputCID }, `Failed to download output from 0G Storage`);
+        }
+
         const passed = await this.criteriaChecker.verifyCriteria(
           agentAddress,
           taskId,
           criteria.criteria,
-          'Observed Swarm Output Content',
+          actualContent || 'EMPTY_OUTPUT_FAILURE',
         );
         criteriaResults.push(passed);
 
@@ -181,8 +206,8 @@ export class AssignmentEngine {
             taskId,
             passed,
             collaborators: agents.filter((a: string) => a !== agentAddress),
-            outputHash: '',
-            paymentReceived: '0',
+            outputHash: outputCID || '',
+            paymentReceived: passed ? (BigInt(totalPayment) / BigInt(agents.length)).toString() : '0',
           },
         );
         newHistoryHashes.push(newHash);
@@ -205,6 +230,11 @@ export class AssignmentEngine {
         newBehaviorData,
       );
       await tx.wait();
+
+      // 7. Track Sustainability (Section 18)
+      const fee = (BigInt(totalPayment) * 2n) / 100n;
+      costTracker.recordFee(fee);
+      costTracker.logAudit();
 
       logger.info({ criteriaResults }, `Task ${taskId} judged successfully.`);
     } catch (error) {

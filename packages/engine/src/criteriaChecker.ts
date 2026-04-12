@@ -53,6 +53,29 @@ export class CriteriaChecker {
         return outputContent.toLowerCase().includes(valStr);
       case 'truthy':
         return !!outputContent && outputContent.trim().length > 0;
+      case 'json':
+        try {
+          JSON.parse(outputContent);
+          return true;
+        } catch {
+          // Check if it's wrapped in markdown
+          const jsonMatch = outputContent.match(/```json\n([\s\S]*)\n```/);
+          if (jsonMatch) {
+            try {
+              JSON.parse(jsonMatch[1]);
+              return true;
+            } catch {
+              return false;
+            }
+          }
+          return false;
+        }
+      case 'density': {
+        const words = outputContent.toLowerCase().split(/\s+/);
+        const count = words.filter((w) => w.includes(valStr)).length;
+        const density = (count / words.length) * 100; // Result in percentage
+        return density >= parseInt(criterion.expectedValue, 10);
+      }
       default:
         return false;
     }

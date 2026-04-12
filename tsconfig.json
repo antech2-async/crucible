@@ -11,6 +11,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "resolveJsonModule": true,
     "outDir": "dist",
     "rootDir": ".",
     "baseUrl": ".",
@@ -18,5 +19,6 @@
       "@crucible/shared/*": ["packages/shared/src/*"]
     }
   },
-  "exclude": ["node_modules", "**/dist", "**/test"]
+  "exclude": ["node_modules", "**/dist", "**/test"],
+  "include": ["packages/**/*", "shared/**/*"]
 }

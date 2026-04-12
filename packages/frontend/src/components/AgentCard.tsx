@@ -14,6 +14,7 @@ interface AgentCardProps {
     tasks: number;
     status: 'idle' | 'working' | 'slashed';
     window: number[];
+    class: 'native' | 'external';
   };
 }
 
@@ -80,9 +81,12 @@ export default function AgentCard({ agent }: AgentCardProps) {
         {/* Header */}
         <div className="flex justify-between items-start mb-4">
           <div>
-            <p className="text-[10px] text-gray-500 font-mono tracking-widest uppercase mb-1">
-              INFT Agent
-            </p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <p className="text-[10px] text-gray-500 font-mono tracking-widest uppercase">
+                {agent.class === 'native' ? 'Native INFT' : 'External Agent'}
+              </p>
+              <div className={`w-1.5 h-1.5 rounded-full ${agent.class === 'native' ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]' : 'bg-orange-400 opacity-60'}`} />
+            </div>
             <h3 className="font-bold text-lg font-mono tracking-tight group-hover:text-white transition-colors">
               {agent.id}
             </h3>
@@ -166,7 +170,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
             <span
               className={`text-[10px] font-bold uppercase tracking-widest ${isSlashed ? 'text-red-400' : 'text-blue-400'}`}
             >
-              {isSlashed ? 'Slashed' : agent.status === 'working' ? 'Processing' : 'Operational'}
+              {isSlashed ? 'Slashed' : agent.status === 'working' ? 'Processing' : agent.class === 'native' ? 'TEE Verified' : 'Hash Committed'}
             </span>
           </div>
 

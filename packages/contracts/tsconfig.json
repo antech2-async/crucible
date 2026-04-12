@@ -8,18 +8,8 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "skipLibCheck": true,
-    "types": [
-      "node",
-      "mocha",
-      "chai"
-    ]
+    "types": ["node", "mocha", "chai"]
   },
-  "include": [
-    "./scripts",
-    "./test",
-    "./typechain-types"
-  ],
-  "files": [
-    "./hardhat.config.ts"
-  ]
+  "include": ["./scripts", "./test", "./typechain-types"],
+  "files": ["./hardhat.config.ts"]
 }

@@ -3,7 +3,7 @@ import { createZGComputeNetworkBroker } from '@0glabs/0g-serving-broker';
 import { ethers } from 'ethers';
 
 const PROVIDER_ADDRESS = process.env.OG_COMPUTE_PROVIDER_ADDRESS!;
-const MODEL = process.env.OG_MODEL || 'deepseek-chat-v3-0324';
+const MODEL = process.env.OG_MODEL || 'gemma-2b-it';
 
 export interface VerifiedInferenceResult {
   taskId: string;

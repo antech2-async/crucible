@@ -2,11 +2,13 @@ import AgentRegistryABI from '../../contracts/artifacts/contracts/AgentRegistry.
 import TaskEscrowABI from '../../contracts/artifacts/contracts/TaskEscrow.sol/TaskEscrow.json';
 import SlashingJudgeABI from '../../contracts/artifacts/contracts/SlashingJudge.sol/SlashingJudge.json';
 import CrucibleINFTABI from '../../contracts/artifacts/contracts/CrucibleINFT.sol/CrucibleINFT.json';
+import AgentStakeVaultABI from '../../contracts/artifacts/contracts/AgentStakeVault.sol/AgentStakeVault.json';
 
 export const AGENT_REGISTRY_ABI = AgentRegistryABI.abi;
 export const TASK_ESCROW_ABI = TaskEscrowABI.abi;
 export const SLASHING_JUDGE_ABI = SlashingJudgeABI.abi;
 export const CRUCIBLE_INFT_ABI = CrucibleINFTABI.abi;
+export const AGENT_STAKE_VAULT_ABI = AgentStakeVaultABI.abi;
 
 export const CONTRACT_ADDRESSES = {
   // These will be populated after the first deployment to Galileo Testnet
@@ -18,4 +20,6 @@ export const CONTRACT_ADDRESSES = {
     process.env.NEXT_PUBLIC_JUDGE_ADDRESS || '0x0000000000000000000000000000000000000000',
   CRUCIBLE_INFT:
     process.env.NEXT_PUBLIC_INFT_ADDRESS || '0x0000000000000000000000000000000000000000',
+  AGENT_STAKE_VAULT:
+    process.env.NEXT_PUBLIC_VAULT_ADDRESS || '0x0000000000000000000000000000000000000000',
 };

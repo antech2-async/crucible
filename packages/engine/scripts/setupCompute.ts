@@ -13,7 +13,9 @@ async function setupCompute() {
   const rpc = process.env.OG_RPC_URL;
 
   if (!pk || !rpc || !PROVIDER_ADDRESS) {
-    logger.error('Missing environment variables: PRIVATE_KEY, OG_RPC_URL, or OG_COMPUTE_PROVIDER_ADDRESS');
+    logger.error(
+      'Missing environment variables: PRIVATE_KEY, OG_RPC_URL, or OG_COMPUTE_PROVIDER_ADDRESS',
+    );
     process.exit(1);
   }
 
@@ -38,8 +40,8 @@ async function setupCompute() {
     // 1. Settlement Layer Account Creation
     logger.info(`Depositing ${INITIAL_DEPOSIT} 0G into Settlement Layer for Provider...`);
     try {
-      // @ts-ignore
-      const tx = await broker.ledger.addAccount(PROVIDER_ADDRESS, INITIAL_DEPOSIT);
+      // @ts-expect-error - ledger is not in the broker type definition yet
+      await broker.ledger.addAccount(PROVIDER_ADDRESS, INITIAL_DEPOSIT);
       logger.info('Settlement account seeded successfully.');
     } catch (e: any) {
       if (e.message.includes('already exists')) {
@@ -52,14 +54,14 @@ async function setupCompute() {
     // 2. Perform a Test Inference to verify TEE status
     logger.info('Performing TEE Attestation Verification Test...');
     const model = process.env.OG_MODEL || 'qwen-2.5-7b-instruct';
-    
+
     try {
-      // @ts-ignore
+      // @ts-expect-error - inference is not in the broker type definition yet
       const result = await broker.inference.chat.completions.create({
         model: model,
         messages: [{ role: 'user', content: 'Connection test. Respond with "READY".' }],
         provider: PROVIDER_ADDRESS,
-        verifiable: true // This is the gold plating
+        verifiable: true, // This is the gold plating
       });
 
       if (result.attestation) {
@@ -73,7 +75,6 @@ async function setupCompute() {
 
     logger.info('--- SETUP COMPLETE ---');
     logger.info('Your AI Swarm is now ready for autonomous deployment.');
-
   } catch (error) {
     logger.error('Failed to complete 0G Compute setup', error);
     process.exit(1);

@@ -4,11 +4,7 @@ import CrucibleINFT from '../artifacts/contracts/CrucibleINFT.sol/CrucibleINFT.j
 import AgentRegistryABI from '../artifacts/contracts/AgentRegistry.sol/AgentRegistry.json';
 import { CONTRACT_ADDRESSES } from '@crucible/shared';
 
-async function mintAgent(
-  agentName: string,
-  capabilities: string[],
-  privateKey: string
-) {
+async function mintAgent(agentName: string, capabilities: string[], privateKey: string) {
   const provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
   const signer = new ethers.Wallet(privateKey, provider);
   const storageService = new StorageService(privateKey);
@@ -27,7 +23,7 @@ async function mintAgent(
     totalDisputes: 0,
     recentWindow: [],
     avgResponseTimeMs: 0,
-    taskHistory: []
+    taskHistory: [],
   };
 
   console.log('Uploading initial history to 0G Storage...');
@@ -38,12 +34,10 @@ async function mintAgent(
     name: agentName,
     capabilities,
     historyHash,
-    created: Date.now()
+    created: Date.now(),
   };
-  const metadataHash = ethers.keccak256(
-    ethers.toUtf8Bytes(JSON.stringify(metadata))
-  );
-  
+  const metadataHash = ethers.keccak256(ethers.toUtf8Bytes(JSON.stringify(metadata)));
+
   console.log('Uploading metadata hash to 0G Storage...');
   const encryptedURI = await storageService.uploadHistory(metadata as any); // Using uploadHistory for URI generation
 
@@ -51,7 +45,7 @@ async function mintAgent(
   const inftContract = new ethers.Contract(
     CONTRACT_ADDRESSES.CRUCIBLE_INFT,
     CrucibleINFT.abi,
-    signer
+    signer,
   );
 
   console.log('Minting Agent INFT...');
@@ -59,8 +53,8 @@ async function mintAgent(
     await signer.getAddress(),
     encryptedURI,
     metadataHash,
-    "0x", // Initial proof for testnet parity
-    { value: ethers.parseEther('0.001') }
+    '0x', // Initial proof for testnet parity
+    { value: ethers.parseEther('0.001') },
   );
 
   const receipt = await tx.wait();
@@ -73,7 +67,7 @@ async function mintAgent(
   const registryContract = new ethers.Contract(
     CONTRACT_ADDRESSES.AGENT_REGISTRY,
     AgentRegistryABI.abi,
-    signer
+    signer,
   );
 
   console.log('Registering on AgentRegistry...');
@@ -81,7 +75,7 @@ async function mintAgent(
     await signer.getAddress(),
     tokenId,
     historyHash,
-    capabilities
+    capabilities,
   );
   await regTx.wait();
 
@@ -95,7 +89,6 @@ async function mintAgent(
 if (require.main === module) {
   const pk = process.env.PRIVATE_KEY;
   if (!pk) throw new Error('PRIVATE_KEY not in env');
-  
-  mintAgent('ResearchBot-01', ['research', 'writing'], pk)
-    .catch(console.error);
+
+  mintAgent('ResearchBot-01', ['research', 'writing'], pk).catch(console.error);
 }

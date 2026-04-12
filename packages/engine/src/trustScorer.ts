@@ -19,22 +19,29 @@ export class TrustScorer {
     // Slash penalty — each slash reduces score by 5%
     const slashPenalty = history.totalSlashEvents * 0.05;
 
-    return Math.max(0, Math.min(1, weightedScore - slashPenalty));
+    const raw = Math.max(0, Math.min(1, weightedScore - slashPenalty));
+    
+    // Cap external agents at 0.85 (cannot reach Elite tier)
+    return history.agentClass === 'EXTERNAL' ? Math.min(raw, 0.85) : raw;
   }
 
   // Returns stake multiplier (1.0 = base, 2.5 = 2.5x base stake)
-  getStakeMultiplier(score: number): number {
-    if (score >= 0.95) return 0.5; // elite
-    if (score >= 0.85) return 0.75; // high trust
-    if (score >= 0.7) return 1.0; // moderate
-    if (score >= 0.5) return 1.5; // low trust
-    return 2.5; // new/bad actor
+  getStakeMultiplier(score: number, agentClass: 'NATIVE' | 'EXTERNAL'): number {
+    let base: number;
+    if (score >= 0.95) base = 0.5; // elite
+    else if (score >= 0.85) base = 0.75; // high trust
+    else if (score >= 0.7) base = 1.0; // moderate
+    else if (score >= 0.5) base = 1.5; // low trust
+    else base = 2.5; // new/bad actor
+
+    // External agents pay extra — compensates for weaker verification
+    return agentClass === 'EXTERNAL' ? base * 1.5 : base;
   }
 
   // Calculate required stake for a given agent and base stake
   calculateRequiredStake(history: AgentHistory, baseStake: bigint): bigint {
     const score = this.calculateScore(history);
-    const multiplier = this.getStakeMultiplier(score);
+    const multiplier = this.getStakeMultiplier(score, history.agentClass as any);
     return BigInt(Math.floor(Number(baseStake) * multiplier));
   }
 
