@@ -16,17 +16,28 @@ contract AgentStakeVault is ReentrancyGuard {
   address public escrowContract;
   address public owner;
 
+  error OnlyEscrow();
+  error OnlyOwner();
+  error NothingDeposited();
+  error InsufficientDeposit();
+  error InsufficientVaultBalance();
+  error FirstTaskAlreadyCompleted();
+  error NotEnoughLocked();
+  error StakeLost();
+  error InsolventSubsidy();
+  error InsolventWithdrawal();
+
   event Deposited(address indexed depositor, uint256 amount);
   event Withdrawn(address indexed depositor, uint256 amount);
   event StakeLocked(address indexed agentAddress, uint256 amount, uint256 taskId);
   event StakeUnlocked(address indexed agentAddress, uint256 amount, bool slashed);
 
   modifier onlyEscrow() {
-    require(msg.sender == escrowContract, 'Only escrow');
+    if (msg.sender != escrowContract) revert OnlyEscrow();
     _;
   }
   modifier onlyOwner() {
-    require(msg.sender == owner, 'Only owner');
+    if (msg.sender != owner) revert OnlyOwner();
     _;
   }
 
@@ -39,13 +50,13 @@ contract AgentStakeVault is ReentrancyGuard {
   }
 
   function deposit() external payable {
-    require(msg.value > 0, 'Nothing deposited');
+    if (msg.value == 0) revert NothingDeposited();
     deposits[msg.sender] += msg.value;
     emit Deposited(msg.sender, msg.value);
   }
 
   function withdraw(uint256 amount) external nonReentrant {
-    require(deposits[msg.sender] >= amount, 'Insufficient deposit');
+    if (deposits[msg.sender] < amount) revert InsufficientDeposit();
     deposits[msg.sender] -= amount;
     payable(msg.sender).transfer(amount);
     emit Withdrawn(msg.sender, amount);
@@ -57,7 +68,7 @@ contract AgentStakeVault is ReentrancyGuard {
     uint256 amount,
     uint256 taskId
   ) external onlyEscrow {
-    require(deposits[agentOwner] >= amount, 'Insufficient vault balance');
+    if (deposits[agentOwner] < amount) revert InsufficientVaultBalance();
     lockedStakes[agentAddress] += amount;
     emit StakeLocked(agentAddress, amount, taskId);
   }
@@ -68,12 +79,12 @@ contract AgentStakeVault is ReentrancyGuard {
     uint256 amount,
     uint256 taskId
   ) external onlyEscrow {
-    require(!hasCompletedFirstTask[agentAddress], 'Already completed first task');
+    if (hasCompletedFirstTask[agentAddress]) revert FirstTaskAlreadyCompleted();
     
     uint256 subsidy = (amount * subsidyPercent) / 100;
     uint256 agentPays = amount - subsidy;
 
-    require(deposits[agentOwner] >= agentPays, 'Insufficient vault balance for subsidized stake');
+    if (deposits[agentOwner] < agentPays) revert InsufficientVaultBalance();
     
     subsidies[taskId][agentAddress] = subsidy;
     lockedStakes[agentAddress] += amount;
@@ -90,29 +101,23 @@ contract AgentStakeVault is ReentrancyGuard {
     bool slashed,
     address insuranceReceiver
   ) external onlyEscrow {
-    require(lockedStakes[agentAddress] >= amount, 'Not enough locked');
+    if (lockedStakes[agentAddress] < amount) revert NotEnoughLocked();
     lockedStakes[agentAddress] -= amount;
 
     if (slashed) {
       uint256 subsidy = subsidies[taskId][agentAddress];
       uint256 agentDeduction = amount - subsidy;
 
-      require(deposits[agentOwner] >= agentDeduction, 'Stake lost');
+      if (deposits[agentOwner] < agentDeduction) revert StakeLost();
       deposits[agentOwner] -= agentDeduction;
 
-      // OCD: 2% Protocol Fee, 98% Insurance (Liquidated Damages to Poster)
-      // Fee is calculated on the FULL amount, but if subsidized, part of it comes from protocol treasury already
       uint256 fee = (amount * 2) / 100;
       uint256 damagePayout = amount - fee;
 
       slashedTreasury += fee;
       
-      // If subsidized, the protocol treasury effectively "pays" its portion by not receiving the full deduction from agent
-      // We deduct the subsidy from the treasury balance (or just don't add it)
-      // Actually, if it's subsidized, the protocol already "paid" by locking the stake without agent funds.
-      // On slash, we use the treasury to cover the insurance payout for the subsidized portion.
       if (subsidy > 0) {
-          require(slashedTreasury >= subsidy, 'Insolvent subsidy');
+          if (slashedTreasury < subsidy) revert InsolventSubsidy();
           slashedTreasury -= subsidy;
       }
 
@@ -134,7 +139,7 @@ contract AgentStakeVault is ReentrancyGuard {
   }
 
   function withdrawProtocolFunds(uint256 amount) external onlyOwner nonReentrant {
-    require(amount <= slashedTreasury, 'Insolvent protocol withdrawal');
+    if (amount > slashedTreasury) revert InsolventWithdrawal();
     slashedTreasury -= amount;
     payable(owner).transfer(amount);
   }

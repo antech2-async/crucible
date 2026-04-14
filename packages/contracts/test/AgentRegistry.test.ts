@@ -51,7 +51,7 @@ describe('AgentRegistry', () => {
 
       await expect(
         registry.connect(agent2).registerNativeAgent(agent2.address, 1, ethers.ZeroHash, []),
-      ).to.be.revertedWith('INFT already used');
+      ).to.be.revertedWithCustomError(registry, 'INFTAlreadyUsed');
     });
 
     it('prevents registering the same agent address twice', async () => {
@@ -61,7 +61,7 @@ describe('AgentRegistry', () => {
       await registry.connect(agent1).registerNativeAgent(agent1.address, 1, ethers.ZeroHash, []);
       await expect(
         registry.connect(agent1).registerNativeAgent(agent1.address, 2, ethers.ZeroHash, []),
-      ).to.be.revertedWith('Already registered');
+      ).to.be.revertedWithCustomError(registry, 'AlreadyRegistered');
     });
   });
 
@@ -99,7 +99,7 @@ describe('AgentRegistry', () => {
     it('prevents unauthorized addresses from updating trust', async () => {
       await expect(
         registry.connect(agent2).updateHistoryAndTrust(agent1.address, ethers.ZeroHash, 4, false),
-      ).to.be.revertedWith('Not authorized');
+      ).to.be.revertedWithCustomError(registry, 'NotAuthorized');
     });
   });
 

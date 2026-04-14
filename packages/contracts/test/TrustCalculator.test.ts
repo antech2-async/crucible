@@ -58,11 +58,11 @@ describe('TrustCalculator', () => {
 
   describe('getStakeMultiplier', () => {
     it('returns strict multipliers for risk pricing', async () => {
-      expect(await calculator.getStakeMultiplier(4)).to.equal(5000); // 0.5x
-      expect(await calculator.getStakeMultiplier(3)).to.equal(7500); // 0.75x
-      expect(await calculator.getStakeMultiplier(2)).to.equal(10000); // 1x
-      expect(await calculator.getStakeMultiplier(1)).to.equal(15000); // 1.5x
-      expect(await calculator.getStakeMultiplier(0)).to.equal(25000); // 2.5x
+      expect(await calculator.getStakeMultiplier(4, 0)).to.equal(5000); // 0.5x
+      expect(await calculator.getStakeMultiplier(3, 0)).to.equal(7500); // 0.75x
+      expect(await calculator.getStakeMultiplier(2, 0)).to.equal(10000); // 1x
+      expect(await calculator.getStakeMultiplier(1, 0)).to.equal(15000); // 1.5x
+      expect(await calculator.getStakeMultiplier(0, 0)).to.equal(25000); // 2.5x
     });
   });
 });

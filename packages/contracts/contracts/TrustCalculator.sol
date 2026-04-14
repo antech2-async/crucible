@@ -43,11 +43,19 @@ contract TrustCalculator {
   }
 
   // Returns multiplier in basis points (10000 = 1x)
-  function getStakeMultiplier(uint8 tier) external pure returns (uint256) {
-    if (tier == 4) return 5000;
-    if (tier == 3) return 7500;
-    if (tier == 2) return 10000;
-    if (tier == 1) return 15000;
-    return 25000;
+  function getStakeMultiplier(uint8 tier, AgentClass agentClass) external pure returns (uint256) {
+    uint256 base = 10000;
+    if (tier == 4) base = 5000;
+    else if (tier == 3) base = 7500;
+    else if (tier == 2) base = 10000;
+    else if (tier == 1) base = 15000;
+    else base = 25000;
+
+    // Game Theory Clause (Section 10): External agents pay 1.5x multiplier
+    if (agentClass == AgentClass.EXTERNAL) {
+        return (base * 150) / 100;
+    }
+
+    return base;
   }
 }

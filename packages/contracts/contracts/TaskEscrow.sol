@@ -56,6 +56,11 @@ contract TaskEscrow is ReentrancyGuard, Ownable {
   error PaymentRequired();
   error NotOpen();
   error LengthMismatch();
+  error NotPoster();
+  error CannotDispute();
+  error WindowClosed();
+  error CannotFail();
+  error NotExpired();
 
   event TaskPosted(
     uint256 indexed taskId,
@@ -255,25 +260,21 @@ contract TaskEscrow is ReentrancyGuard, Ownable {
 
   function disputeTask(uint256 taskId) external {
     Task storage t = tasks[taskId];
-    require(msg.sender == t.poster, 'Not poster');
-    require(
-      t.status == TaskStatus.COMPLETED || t.status == TaskStatus.PARTIALLY_COMPLETED,
-      'Cannot dispute'
-    );
-    require(block.timestamp < t.completedAt + t.disputeWindow, 'Window closed');
+    if (msg.sender != t.poster) revert NotPoster();
+    if (t.status != TaskStatus.COMPLETED && t.status != TaskStatus.PARTIALLY_COMPLETED) revert CannotDispute();
+    if (block.timestamp >= t.completedAt + t.disputeWindow) revert WindowClosed();
     t.status = TaskStatus.DISPUTED;
     emit TaskDisputed(taskId);
   }
 
   function failExpiredTask(uint256 taskId) external nonReentrant {
     Task storage t = tasks[taskId];
-    require(
-      t.status == TaskStatus.ASSIGNED ||
-        t.status == TaskStatus.IN_PIPELINE ||
-        t.status == TaskStatus.VERIFYING,
-      'Cannot fail'
-    );
-    require(block.timestamp > t.deadline, 'Not expired');
+    if (
+      t.status != TaskStatus.ASSIGNED &&
+      t.status != TaskStatus.IN_PIPELINE &&
+      t.status != TaskStatus.VERIFYING
+    ) revert CannotFail();
+    if (block.timestamp <= t.deadline) revert NotExpired();
 
     t.status = TaskStatus.FAILED;
     payable(t.poster).transfer(t.totalPayment);
@@ -281,7 +282,21 @@ contract TaskEscrow is ReentrancyGuard, Ownable {
     for (uint i = 0; i < t.assignedAgents.length; i++) {
       address agent = t.assignedAgents[i];
       AgentRegistry.Agent memory a = registry.getAgent(agent);
-      bool slashThis = !agentSubmitted[taskId][agent];
+      
+      bool slashThis = false;
+      if (t.isSequential) {
+          // In sequential mode, only slash the current bottleneck agent
+          // Agents downstream of the current stage are not at fault
+          if (i == t.currentPipelineStage && !agentSubmitted[taskId][agent]) {
+              slashThis = true;
+          }
+      } else {
+          // In broadcast mode, slash anyone who failed to submit
+          if (!agentSubmitted[taskId][agent]) {
+              slashThis = true;
+          }
+      }
+
       vault.unlockStake(a.owner, agent, t.agentStakes[i], taskId, slashThis, slashThis ? t.poster : address(0));
       if (slashThis) emit AgentSlashed(taskId, agent, t.agentStakes[i]);
     }

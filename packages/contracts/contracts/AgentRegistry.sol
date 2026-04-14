@@ -32,6 +32,13 @@ contract AgentRegistry is Ownable, ReentrancyGuard {
   mapping(address => bool) public authorizedUpdaters;
   IERC721 public inftContract;
 
+  error NotAuthorized();
+  error INFTContractNotSet();
+  error NotINFTOwner();
+  error AlreadyRegistered();
+  error INFTAlreadyUsed();
+  error AgentNotActive();
+
   uint256[5] public tierStakeRequirements = [
     0.05 ether,
     0.03 ether,
@@ -45,7 +52,7 @@ contract AgentRegistry is Ownable, ReentrancyGuard {
   event HistoryUpdated(address indexed agentAddress, bytes32 newRootHash);
 
   modifier onlyAuthorized() {
-    require(authorizedUpdaters[msg.sender] || msg.sender == owner(), 'Not authorized');
+    if (!authorizedUpdaters[msg.sender] && msg.sender != owner()) revert NotAuthorized();
     _;
   }
 
@@ -93,10 +100,10 @@ contract AgentRegistry is Ownable, ReentrancyGuard {
     AgentClass agentClass,
     string memory endpoint
   ) internal {
-    require(address(inftContract) != address(0), 'INFT contact not set');
-    require(inftContract.ownerOf(inftTokenId) == msg.sender, 'Not INFT owner');
-    require(agents[agentAddress].owner == address(0), 'Already registered');
-    require(inftToAgent[inftTokenId] == address(0), 'INFT already used');
+    if (address(inftContract) == address(0)) revert INFTContractNotSet();
+    if (inftContract.ownerOf(inftTokenId) != msg.sender) revert NotINFTOwner();
+    if (agents[agentAddress].owner != address(0)) revert AlreadyRegistered();
+    if (inftToAgent[inftTokenId] != address(0)) revert INFTAlreadyUsed();
 
     uint256 baseStake = tierStakeRequirements[0];
     uint256 requiredStake = agentClass == AgentClass.EXTERNAL ? (baseStake * 150) / 100 : baseStake;
@@ -128,7 +135,7 @@ contract AgentRegistry is Ownable, ReentrancyGuard {
     bool wasSlashed
   ) external onlyAuthorized {
     Agent storage agent = agents[agentAddress];
-    require(agent.isActive, 'Agent not active');
+    if (!agent.isActive) revert AgentNotActive();
 
     uint8 oldTier = agent.trustTier;
     agent.historyRootHash = newHistoryHash;
