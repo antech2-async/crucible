@@ -35,7 +35,7 @@ export class PipelineCoordinator {
     try {
       // 1. Fetch Task Details and Criteria
       const [, , , , , criteriaURI] = await this.escrowContract.getTaskBasic(taskId);
-      const criteria = (await this.storageService.downloadHistory(criteriaURI)) as any;
+      const criteria = (await this.storageService.downloadJSON(criteriaURI)) as any;
       const [allAgents] = await this.escrowContract.getTaskAgents(taskId);
 
       // 2. High-Fidelity Context Handoff: Get previous stage output
@@ -46,7 +46,7 @@ export class PipelineCoordinator {
         
         if (prevOutputHash && prevOutputHash !== "") {
           logger.info(`🔗 Fetching context from previous stage (Agent: ${prevAgent})`);
-          const download = await this.storageService.downloadHistory(prevOutputHash);
+          const download = await this.storageService.downloadJSON(prevOutputHash);
           previousOutput = typeof download === 'string' ? download : JSON.stringify(download);
         }
       }
@@ -61,7 +61,7 @@ export class PipelineCoordinator {
 
       // 4. Run Verified Inference (In production, this might be a webhook to the actual agent)
       logger.info(`🤖 Running inference for Agent ${nextAgentAddress}...`);
-      const result = await this.computeService.runInference(systemPrompt, userMessage);
+      const result = await this.computeService.runAgentInference(systemPrompt, userMessage, taskId, nextAgentAddress);
 
       // 5. Upload Output to 0G Storage
       const outputData = {
@@ -71,7 +71,7 @@ export class PipelineCoordinator {
         output: result,
         timestamp: Date.now()
       };
-      const { newHash: outputHash } = await this.storageService.updateAgentHistory("", outputData); // Temporary commit
+      const outputHash = await this.storageService.uploadJSON(outputData); // Temporary commit
 
       // 6. Advance Pipeline On-Chain
       logger.info(`✅ Stage complete. Advancing pipeline on-chain (Output: ${outputHash})`);

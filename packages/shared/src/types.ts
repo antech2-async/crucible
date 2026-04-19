@@ -11,6 +11,7 @@ export enum TaskStatus {
 export interface AgentHistory {
   agentId: string;
   inftTokenId: number;
+  agentClass: 'NATIVE' | 'EXTERNAL';
   version: number;
   updatedAt: number;
   totalTasks: number;

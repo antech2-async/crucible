@@ -25,13 +25,18 @@ async function main() {
   // 1. Mint INFT
   // For the hackathon, we assume the INFT contract has a basic mint function
   const INFT_ABI = [
-    "function mint(address to) public returns (uint256)",
+    "function mintAgent(address to, string calldata encryptedURI, bytes32 metadataHash) external payable returns (uint256)",
     "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
   ];
   const inftContract = new ethers.Contract(inftAddress, INFT_ABI, signer);
 
   console.log('Minting Agent INFT...');
-  const mintTx = await inftContract.mint(signer.address);
+  const mintTx = await inftContract.mintAgent(
+    signer.address,
+    "placeholder_uri",
+    ethers.ZeroHash,
+    { value: ethers.parseEther("0.001") }
+  );
   const receipt = await mintTx.wait();
   
   // Extract tokenId from Transfer event

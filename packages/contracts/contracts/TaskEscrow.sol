@@ -219,20 +219,16 @@ contract TaskEscrow is ReentrancyGuard, Ownable {
     }
 
     bool consensusReached = passCount > t.assignedAgents.length / 2;
-    passCount = 0; // Reset for the second loop if needed, but actually I'll just merge the loops
-    failCount = 0;
 
     for (uint i = 0; i < t.assignedAgents.length; i++) {
       address agent = t.assignedAgents[i];
       AgentRegistry.Agent memory a = registry.getAgent(agent);
 
       if (passed[i]) {
-        passCount++;
         vault.unlockStake(a.owner, agent, t.agentStakes[i], taskId, false, address(0));
         // Only pay if consensus was reached
         if (consensusReached && payments[i] > 0) payable(agent).transfer(payments[i]);
       } else {
-        failCount++;
         vault.unlockStake(a.owner, agent, t.agentStakes[i], taskId, true, t.poster);
         emit AgentSlashed(taskId, agent, t.agentStakes[i]);
       }
@@ -244,9 +240,6 @@ contract TaskEscrow is ReentrancyGuard, Ownable {
         emit TaskCompleted(taskId, t.assignedAgents, payments);
       } else {
         t.status = TaskStatus.PARTIALLY_COMPLETED;
-        // Refund only the portion for failed agents
-        uint256 refund = (t.totalPayment * failCount) / t.assignedAgents.length;
-        payable(t.poster).transfer(refund);
         emit TaskPartiallyCompleted(taskId, passCount, failCount);
       }
     } else {

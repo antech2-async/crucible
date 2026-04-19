@@ -6,11 +6,14 @@ export class ResearchAgent {
   readonly capabilities = ['research'];
   readonly agentAddress: string;
 
+  private initPromise: Promise<void>;
+
   constructor(address: string, privateKey: string) {
     this.agentAddress = address;
     this.computeService = new ComputeService();
-    this.computeService.initialize(privateKey).catch((e) => {
+    this.initPromise = this.computeService.initialize(privateKey).catch((e) => {
       logger.error('Failed to initialize compute service for ResearchAgent', e);
+      throw e;
     });
   }
 
@@ -28,6 +31,7 @@ export class ResearchAgent {
     attestation: unknown;
   }> {
     logger.info(`ResearchAgent (${this.agentAddress}) starting task ${taskInput.taskId}...`);
+    await this.initPromise;
 
     const contextPrompt = taskInput.previousContext 
       ? `\n\nCONTINUATION TASK: Build upon the previous agent's research findings provided below. DO NOT REPEAT their work, but extend it with new insights.\n\n[PREVIOUS AGENT OUTPUT]:\n${taskInput.previousContext}`

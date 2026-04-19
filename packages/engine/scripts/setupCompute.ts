@@ -35,7 +35,7 @@ async function setupCompute() {
 
     // Initialize Broker
     logger.info('Initializing 0G Serving Network Broker...');
-    const broker = await createZGComputeNetworkBroker(signer);
+    const broker = await createZGComputeNetworkBroker(signer as any);
 
     // 1. Settlement Layer Account Creation
     logger.info(`Depositing ${INITIAL_DEPOSIT} 0G into Settlement Layer for Provider...`);

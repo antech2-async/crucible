@@ -1,33 +1,7 @@
 import { Indexer, MemData } from '@0glabs/0g-ts-sdk';
 import { ethers } from 'ethers';
 import { costTracker } from '../costTracker';
-
-const INDEXER_RPC = process.env.OG_STORAGE_INDEXER_URL!;
-const RPC_URL = process.env.OG_RPC_URL!;
-
-export interface AgentHistory {
-  agentId: string;
-  inftTokenId: number;
-  agentClass: 'NATIVE' | 'EXTERNAL';
-  version: number;
-  updatedAt: number;
-  totalTasks: number;
-  completedHonestly: number;
-  totalSlashEvents: number;
-  totalDisputes: number;
-  recentWindow: number[]; // last 10 results (0 or 1)
-  avgResponseTimeMs: number;
-  taskHistory: TaskHistoryEntry[];
-}
-
-export interface TaskHistoryEntry {
-  taskId: string;
-  timestamp: number;
-  passed: boolean;
-  collaborators: string[];
-  outputHash: string;
-  paymentReceived: string;
-}
+import { AgentHistory, TaskHistoryEntry, TaskCriteria, Criterion } from '@crucible/shared';
 
 export interface TaskResult {
   taskId: string;
@@ -37,20 +11,6 @@ export interface TaskResult {
   paymentReceived: string;
 }
 
-export interface TaskCriteria {
-  taskId: string;
-  requiredCapabilities: string[];
-  criteria: Criterion[];
-  deadline: number;
-}
-
-export interface Criterion {
-  fieldName: string;
-  operator: 'gte' | 'lte' | 'eq' | 'contains' | 'truthy';
-  expectedValue: string;
-  weight: number;
-}
-
 export class StorageService {
   private indexer: Indexer;
   private signer: ethers.Wallet;
@@ -58,9 +18,9 @@ export class StorageService {
   private hashMapping: Map<string, string> = new Map();
 
   constructor(privateKey: string) {
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
     this.signer = new ethers.Wallet(privateKey, provider);
-    this.indexer = new Indexer(INDEXER_RPC);
+    this.indexer = new Indexer(process.env.OG_STORAGE_INDEXER_URL!);
   }
 
   async uploadHistory(historyData: AgentHistory): Promise<{ rootHash: string; bytes32Hash: string }> {
@@ -79,23 +39,13 @@ export class StorageService {
     this.hashMapping.set(bytes32Hash, rootHash);
     
     // Track cost (approx 0.001 OG per write based on mock network specs)
-    costTracker.addStorageSpend(ethers.parseEther('0.001'));
+    costTracker.recordStorageWrite();
 
     return { rootHash: rootHash!, bytes32Hash };
   }
 
-  async downloadHistory(rootHashOrBytes32: string): Promise<AgentHistory> {
-    const rootHash = this.hashMapping.get(rootHashOrBytes32) ?? rootHashOrBytes32;
-    // @ts-expect-error SDK typing mismatch
-    const [data, err] = await this.indexer.download(rootHash);
-    if (err) throw new Error(`Download error: ${err}`);
-
-    const jsonString = Buffer.from(data!).toString('utf-8');
-    return JSON.parse(jsonString) as AgentHistory;
-  }
-
-  async uploadTaskCriteria(criteria: TaskCriteria): Promise<string> {
-    const jsonString = JSON.stringify(criteria);
+  async uploadJSON(data: any): Promise<string> {
+    const jsonString = JSON.stringify(data);
     const memData = new MemData(Buffer.from(jsonString));
 
     const [tree, treeErr] = await memData.merkleTree();
@@ -105,9 +55,33 @@ export class StorageService {
     // @ts-expect-error SDK typing mismatch
     const [, uploadErr] = await this.indexer.upload(memData, this.signer);
     if (uploadErr) throw new Error(`Upload error: ${uploadErr}`);
+
+    const bytes32Hash = ethers.keccak256(ethers.toUtf8Bytes(rootHash));
+    this.hashMapping.set(bytes32Hash, rootHash);
     
-    costTracker.recordStorageWrite(); // Section 18: ~0.001 OG per write
-    return rootHash!;
+    // Track cost (approx 0.001 OG per write based on mock network specs)
+    costTracker.recordStorageWrite();
+
+    return bytes32Hash;
+  }
+
+  async downloadJSON<T = any>(rootHashOrBytes32: string): Promise<T> {
+    const rootHash = this.hashMapping.get(rootHashOrBytes32) ?? rootHashOrBytes32;
+    // @ts-expect-error SDK typing mismatch
+    const [data, err] = await this.indexer.download(rootHash);
+    if (err) throw new Error(`Download error: ${err}`);
+
+    const jsonString = Buffer.from(data!).toString('utf-8');
+    return JSON.parse(jsonString) as T;
+  }
+
+  async downloadHistory(rootHashOrBytes32: string): Promise<AgentHistory> {
+    return this.downloadJSON<AgentHistory>(rootHashOrBytes32);
+  }
+
+  async uploadTaskCriteria(criteria: TaskCriteria): Promise<string> {
+    const bytes32Hash = await this.uploadJSON(criteria);
+    return this.hashMapping.get(bytes32Hash)!; // returns original rootHash as requested
   }
 
   async updateAgentHistory(

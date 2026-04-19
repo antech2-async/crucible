@@ -23,6 +23,7 @@ export class AgentRunner {
 
   constructor() {
     this.provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
+    this.escrowContract = new ethers.Contract(
       CONTRACT_ADDRESSES.TASK_ESCROW,
       TaskEscrowABI.abi,
       this.provider,

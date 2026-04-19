@@ -90,11 +90,15 @@ describe('Hardening Audit', () => {
       const finalVault2 = await vault.deposits(agent2.address);
       const locked2 = await vault.lockedStakes(agent2.address);
 
-      // ACCOUNT FOR 50% SUBSIDY: agent1 only loses 0.05 ETH of their own deposit
+      // ACCOUNT FOR 50% SUBSIDY:
+      // Since 'deposits' is now purely free balance, lockStakeWithSubsidy DEDUCTED the agentPays amount right away.
+      // initialVault1 & 2 are read after locking, meaning they sit at 0.95 ETH (assuming 0.1 lock with 50% subsidy).
+      // Agent 1 is slashed: their locked stake goes to treasury. They do NOT get a refund. Therefore finalVault == initialVault.
+      // Agent 2 is refunded: their locked stake returns to free balance. finalVault = initialVault + 0.05.
       const subsidy = stakeAmount / BigInt(2);
-      expect(finalVault1).to.equal(initialVault1 - (stakeAmount - subsidy));
-      expect(finalVault2).to.equal(initialVault2); // No deduction
-      expect(locked2).to.equal(0); // Stake returned to owner
+      expect(finalVault1).to.equal(initialVault1); // Already deducted at lock time.
+      expect(finalVault2).to.equal(initialVault2 + (stakeAmount - subsidy)); // Refunded back to free balance.
+      expect(locked2).to.equal(0); // Stake returned
     });
   });
 

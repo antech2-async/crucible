@@ -92,8 +92,7 @@ export class AssignmentEngine {
       const tx = await this.escrowContract.assignAgents(
         taskId,
         selected.map((a) => a.address),
-        stakes,
-        { value: totalStake },
+        stakes
       );
       await tx.wait();
 

@@ -54,6 +54,8 @@ describe('SlashingJudge', () => {
     // Setup Auth
     await registry.addAuthorizedUpdater(await judge.getAddress());
     await escrow.setSlashingJudge(await judge.getAddress());
+    await judge.addAuthorizedCaller(owner.address);
+    await judge.addAuthorizedCaller(engine.address);
 
     // Register Agents
     await inftMock.connect(agent1).mintAgent(agent1.address, "uri", ethers.ZeroHash, "0x", { value: ethers.parseEther("0.001") });

@@ -69,6 +69,7 @@ contract AgentStakeVault is ReentrancyGuard {
     uint256 taskId
   ) external onlyEscrow {
     if (deposits[agentOwner] < amount) revert InsufficientVaultBalance();
+    deposits[agentOwner] -= amount;
     lockedStakes[agentAddress] += amount;
     emit StakeLocked(agentAddress, amount, taskId);
   }
@@ -86,9 +87,9 @@ contract AgentStakeVault is ReentrancyGuard {
 
     if (deposits[agentOwner] < agentPays) revert InsufficientVaultBalance();
     
+    deposits[agentOwner] -= agentPays;
     subsidies[taskId][agentAddress] = subsidy;
     lockedStakes[agentAddress] += amount;
-    hasCompletedFirstTask[agentAddress] = true;
 
     emit StakeLocked(agentAddress, amount, taskId);
   }
@@ -103,14 +104,9 @@ contract AgentStakeVault is ReentrancyGuard {
   ) external onlyEscrow {
     if (lockedStakes[agentAddress] < amount) revert NotEnoughLocked();
     lockedStakes[agentAddress] -= amount;
+    uint256 subsidy = subsidies[taskId][agentAddress];
 
     if (slashed) {
-      uint256 subsidy = subsidies[taskId][agentAddress];
-      uint256 agentDeduction = amount - subsidy;
-
-      if (deposits[agentOwner] < agentDeduction) revert StakeLost();
-      deposits[agentOwner] -= agentDeduction;
-
       uint256 fee = (amount * 2) / 100;
       uint256 damagePayout = amount - fee;
 
@@ -126,16 +122,23 @@ contract AgentStakeVault is ReentrancyGuard {
       } else {
         slashedTreasury += damagePayout; // Fallback if no receiver
       }
+    } else {
+      // Refund the agent's portion back to free deposits
+      uint256 agentReturn = amount - subsidy;
+      deposits[agentOwner] += agentReturn;
+
+      if (subsidy > 0 && !hasCompletedFirstTask[agentAddress]) {
+          hasCompletedFirstTask[agentAddress] = true;
+      }
     }
     emit StakeUnlocked(agentAddress, amount, slashed);
   }
 
   function getAvailableBalance(
     address agentOwner,
-    address agentAddress
+    address
   ) external view returns (uint256) {
-    if (deposits[agentOwner] < lockedStakes[agentAddress]) return 0;
-    return deposits[agentOwner] - lockedStakes[agentAddress];
+    return deposits[agentOwner];
   }
 
   function withdrawProtocolFunds(uint256 amount) external onlyOwner nonReentrant {

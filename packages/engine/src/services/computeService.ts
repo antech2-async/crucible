@@ -22,7 +22,7 @@ export class ComputeService {
   async initialize(privateKey: string) {
     const provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
     this.signer = new ethers.Wallet(privateKey, provider);
-    this.broker = await createZGComputeNetworkBroker(this.signer);
+    this.broker = await createZGComputeNetworkBroker(this.signer as any);
 
     // Ensure the broker is funded with the settlement layer
     try {

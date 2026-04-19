@@ -62,7 +62,7 @@ async function main() {
   await judge.waitForDeployment();
   console.log('SlashingJudge deployed to:', await judge.getAddress());
 
-  // 5. Deploy CrucibleINFT
+  // 6. Deploy CrucibleINFT
   const CrucibleINFT = await ethers.getContractFactory('CrucibleINFT');
   const inft = await CrucibleINFT.deploy(deployer.address);
   await inft.waitForDeployment();
@@ -71,9 +71,12 @@ async function main() {
   // 7. Set authorizations
   console.log('Setting authorizations...');
   await registry.addAuthorizedUpdater(await judge.getAddress());
+  await registry.setINFTContract(await inft.getAddress());
   await escrow.setSlashingJudge(await judge.getAddress());
   await vault.setEscrowContract(await escrow.getAddress());
+  
   // Deployer acts as engine for demo: (assignmentEngine = deployer automatically passed to TaskEscrow)
+  await judge.addAuthorizedCaller(deployer.address);
 
   console.log('Deployment complete!');
 }

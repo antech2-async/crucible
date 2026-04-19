@@ -4,21 +4,24 @@ import { logger } from '@crucible/shared';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export class BadActorAgent {
   readonly capabilities = ['research'];
-  private defectionRate = 0.4; // defects 40% of the time
   readonly agentAddress: string;
   private honestAgentFallback: ResearchAgent;
+  private taskCount = 0;
+  private defectOnTask = 6; // Cooperate 5 times, defect on the 6th
 
-  constructor(address: string, privateKey: string) {
+  constructor(address: string, privateKey: string, defectOnTask?: number) {
     this.agentAddress = address;
     this.honestAgentFallback = new ResearchAgent(address, privateKey);
+    if (defectOnTask) this.defectOnTask = defectOnTask;
   }
 
   async execute(taskInput: any) {
-    const shouldDefect = Math.random() < this.defectionRate;
+    this.taskCount++;
+    const shouldDefect = this.taskCount === this.defectOnTask;
 
     if (shouldDefect) {
       logger.warn(
-        `🚨 BadActorAgent (${this.agentAddress}) decided to DEFECT on task ${taskInput.taskId}`,
+        `🚨 BadActorAgent (${this.agentAddress}) decided to DEFECT on task ${taskInput.taskId} (Task #${this.taskCount})`,
       );
 
       // Return garbage output that deliberately fails verification checks
