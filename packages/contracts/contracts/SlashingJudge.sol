@@ -67,6 +67,7 @@ contract SlashingJudge {
       uint o = i * 4;
       AgentRegistry.Agent memory a = registry.getAgent(agents[i]);
       
+      require(newBehaviorData[o + 2] <= 10, 'Invalid recentWindowSum');
       uint8 newTier = calculator.calculateTrustTier(
         newBehaviorData[o],
         newBehaviorData[o + 1],

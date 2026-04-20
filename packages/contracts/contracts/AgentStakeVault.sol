@@ -85,8 +85,9 @@ contract AgentStakeVault is ReentrancyGuard {
     uint256 subsidy = (amount * subsidyPercent) / 100;
     uint256 agentPays = amount - subsidy;
 
-    if (deposits[agentOwner] < agentPays) revert InsufficientVaultBalance();
-    
+    if (slashedTreasury < subsidy) revert InsolventSubsidy();
+    slashedTreasury -= subsidy;
+
     deposits[agentOwner] -= agentPays;
     subsidies[taskId][agentAddress] = subsidy;
     lockedStakes[agentAddress] += amount;
@@ -113,8 +114,8 @@ contract AgentStakeVault is ReentrancyGuard {
       slashedTreasury += fee;
       
       if (subsidy > 0) {
-          if (slashedTreasury < subsidy) revert InsolventSubsidy();
-          slashedTreasury -= subsidy;
+          // Already deducted from slashedTreasury at lock time
+          // If we had automated insurance, it would come from here
       }
 
       if (insuranceReceiver != address(0)) {
@@ -127,7 +128,11 @@ contract AgentStakeVault is ReentrancyGuard {
       uint256 agentReturn = amount - subsidy;
       deposits[agentOwner] += agentReturn;
 
-      if (subsidy > 0 && !hasCompletedFirstTask[agentAddress]) {
+      // Recycle protocol subsidy back to treasury
+      if (subsidy > 0) {
+          slashedTreasury += subsidy;
+      }
+      if (!hasCompletedFirstTask[agentAddress]) {
           hasCompletedFirstTask[agentAddress] = true;
       }
     }

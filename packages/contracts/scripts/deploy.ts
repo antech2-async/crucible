@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
-import { FetchRequest } from "ethers";
+import { FetchRequest } from 'ethers';
 import axios from "axios";
+import { storage } from '../../shared/src/StorageProvider';
 
 // Definitive workaround for the Node v22 undici maxRedirections bug.
 // We override the global ethers fetcher to use Axios, which handles redirects stably.
@@ -9,7 +10,7 @@ FetchRequest.registerGetUrl(async (req) => {
         url: req.url,
         method: req.method,
         data: req.body,
-        headers: Object.fromEntries(req.getHeaderKeys().map(k => [k, req.getHeader(k)])),
+        headers: req.headers,
         responseType: 'arraybuffer',
     });
 
@@ -77,6 +78,33 @@ async function main() {
   
   // Deployer acts as engine for demo: (assignmentEngine = deployer automatically passed to TaskEscrow)
   await judge.addAuthorizedCaller(deployer.address);
+
+  // 8. Seed beginner task pool (Section 15)
+  console.log('Seeding beginner task pool...');
+  const beginnerCriteria = {
+    requiredCapabilities: ['research'],
+    isSequential: false,
+    criteria: [
+      { fieldName: 'wordCount', operator: 'gte', expectedValue: '100', weight: 1 },
+      { fieldName: 'isValidJson', operator: 'eq', expectedValue: 'true', weight: 1 },
+    ],
+  };
+
+  try {
+    const { hash: criteriaRootHash, uri: criteriaURI } = await storage.commit(JSON.stringify(beginnerCriteria));
+    const criteriaBytes32 = ethers.keccak256(ethers.toUtf8Bytes(criteriaRootHash));
+    const deadline = Math.floor(Date.now() / 1000) + 86400; // 24 hours
+    
+    const taskBatch = 5; // Reduced from 10 to speed up deployment demo
+    const paymentPerTask = ethers.parseEther('0.001');
+
+    for (let i = 0; i < taskBatch; i++) {
+        await (await escrow.postTask(deadline, criteriaBytes32, criteriaURI, false, { value: paymentPerTask })).wait();
+    }
+    console.log(`Successfully seeded ${taskBatch} beginner tasks.`);
+  } catch (e) {
+    console.warn('Skipping beginner seeding (Storage Provider likely not configured):', e);
+  }
 
   console.log('Deployment complete!');
 }

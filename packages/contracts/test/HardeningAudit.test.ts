@@ -114,11 +114,11 @@ describe('Hardening Audit', () => {
 
       await vault.connect(agent1).deposit({ value: ethers.parseEther('1.0') });
       const stakeAmount = ethers.parseEther('0.1');
+
+      const initialTreasury = await vault.slashedTreasury();
       await escrow.connect(assignmentEngine).assignAgents(
         0, [agent1.address], [stakeAmount]
       );
-
-      const initialTreasury = await vault.slashedTreasury();
 
       await ethers.provider.send('evm_increaseTime', [3601]);
       await ethers.provider.send('evm_mine', []);

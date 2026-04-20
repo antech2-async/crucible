@@ -151,15 +151,23 @@ describe('TaskEscrow', () => {
       await escrow.connect(agent1).submitOutput(0, 'hash', '0x');
     });
 
-    it('resolves task and pays agent', async () => {
-      const initialBalance = await ethers.provider.getBalance(agent1.address);
-
+    it('resolves task and pending payment is recorded', async () => {
       await escrow.connect(slashingJudge).resolveTask(0, [true], [ethers.parseEther('1.0')]);
 
-      const finalBalance = await ethers.provider.getBalance(agent1.address);
-      expect(finalBalance).to.be.greaterThan(initialBalance);
+      const pending = await escrow.pendingPayments(0, agent1.address);
+      expect(pending).to.equal(ethers.parseEther('1.0'));
+      
       const task = await escrow.tasks(0);
       expect(task.status).to.equal(4); // COMPLETED
+      
+      // Verification of claim
+      await ethers.provider.send('evm_increaseTime', [86401]);
+      await ethers.provider.send('evm_mine', []);
+      
+      const balBefore = await ethers.provider.getBalance(agent1.address);
+      await escrow.connect(agent1).claimPayment(0);
+      const balAfter = await ethers.provider.getBalance(agent1.address);
+      expect(balAfter).to.be.gt(balBefore);
     });
 
     it('slashes agent and resolves', async () => {

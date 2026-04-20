@@ -2,10 +2,12 @@
 export enum TaskStatus {
   OPEN = 0,
   ASSIGNED = 1,
-  VERIFYING = 2,
-  COMPLETED = 3,
-  DISPUTED = 4,
-  FAILED = 5,
+  IN_PIPELINE = 2,
+  VERIFYING = 3,
+  COMPLETED = 4,
+  PARTIALLY_COMPLETED = 5,
+  DISPUTED = 6,
+  FAILED = 7,
 }
 
 export interface AgentHistory {

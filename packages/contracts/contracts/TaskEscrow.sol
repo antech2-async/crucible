@@ -32,6 +32,7 @@ contract TaskEscrow is ReentrancyGuard, Ownable {
     uint8 currentPipelineStage;
     uint256 createdAt;
     uint256 completedAt;
+    uint256 remainingPosterRefund;
   }
 
   // Separate mappings (cannot have mappings inside struct stored in mapping in older Solidity)
@@ -39,6 +40,8 @@ contract TaskEscrow is ReentrancyGuard, Ownable {
   mapping(uint256 => mapping(address => bool)) public agentSubmitted;
   mapping(uint256 => mapping(address => string)) public agentOutputHashes;
   mapping(uint256 => mapping(address => bytes)) public agentAttestations;
+  mapping(uint256 => mapping(address => uint256)) public pendingPayments;
+  mapping(uint256 => mapping(address => uint256)) public earliestClaimTime;
 
   uint256 public taskCount;
   address public slashingJudge;
@@ -75,7 +78,9 @@ contract TaskEscrow is ReentrancyGuard, Ownable {
   event TaskPartiallyCompleted(uint256 indexed taskId, uint256 passCount, uint256 failCount);
   event AgentSlashed(uint256 indexed taskId, address indexed agent, uint256 amount);
   event TaskDisputed(uint256 indexed taskId);
+  event DisputeResolved(uint256 indexed taskId, bool refundPoster);
   event TaskFailed(uint256 indexed taskId, string reason);
+  event PaymentClaimed(uint256 indexed taskId, address indexed agent, uint256 amount);
 
   modifier onlyJudge() {
     if (msg.sender != slashingJudge) revert ("Only judge");
@@ -227,7 +232,10 @@ contract TaskEscrow is ReentrancyGuard, Ownable {
       if (passed[i]) {
         vault.unlockStake(a.owner, agent, t.agentStakes[i], taskId, false, address(0));
         // Only pay if consensus was reached
-        if (consensusReached && payments[i] > 0) payable(agent).transfer(payments[i]);
+        if (consensusReached && payments[i] > 0) {
+            pendingPayments[taskId][agent] = payments[i];
+            earliestClaimTime[taskId][agent] = block.timestamp + t.disputeWindow;
+        }
       } else {
         vault.unlockStake(a.owner, agent, t.agentStakes[i], taskId, true, t.poster);
         emit AgentSlashed(taskId, agent, t.agentStakes[i]);
@@ -235,6 +243,12 @@ contract TaskEscrow is ReentrancyGuard, Ownable {
     }
 
     if (consensusReached) {
+      uint256 totalAllocatedToAgents = 0;
+      for (uint i = 0; i < payments.length; i++) {
+        if (passed[i]) totalAllocatedToAgents += payments[i];
+      }
+      t.remainingPosterRefund = t.totalPayment - totalAllocatedToAgents;
+
       if (failCount == 0) {
         t.status = TaskStatus.COMPLETED;
         emit TaskCompleted(taskId, t.assignedAgents, payments);
@@ -258,6 +272,42 @@ contract TaskEscrow is ReentrancyGuard, Ownable {
     if (block.timestamp >= t.completedAt + t.disputeWindow) revert WindowClosed();
     t.status = TaskStatus.DISPUTED;
     emit TaskDisputed(taskId);
+  }
+
+  function resolveDispute(uint256 taskId, bool refundPoster) external onlyOwner {
+    Task storage t = tasks[taskId];
+    require(t.status == TaskStatus.DISPUTED, "Not disputed");
+
+    if (refundPoster) {
+        t.status = TaskStatus.FAILED;
+        
+        // Poster gets their original remaining balance + all voided agent payments
+        uint256 totalRefund = t.remainingPosterRefund;
+        for (uint i = 0; i < t.assignedAgents.length; i++) {
+            address agent = t.assignedAgents[i];
+            totalRefund += pendingPayments[taskId][agent];
+            pendingPayments[taskId][agent] = 0; // Void agent portion
+        }
+        
+        t.remainingPosterRefund = 0;
+        payable(t.poster).transfer(totalRefund);
+    } else {
+        t.status = TaskStatus.COMPLETED;
+    }
+
+    emit DisputeResolved(taskId, refundPoster);
+  }
+
+  function claimPayment(uint256 taskId) external nonReentrant {
+    uint256 amount = pendingPayments[taskId][msg.sender];
+    require(amount > 0, "Nothing to claim");
+    require(block.timestamp >= earliestClaimTime[taskId][msg.sender], "Dispute window still open");
+    Task storage t = tasks[taskId];
+    require(t.status != TaskStatus.DISPUTED, "Task disputed");
+    
+    pendingPayments[taskId][msg.sender] = 0;
+    payable(msg.sender).transfer(amount);
+    emit PaymentClaimed(taskId, msg.sender, amount);
   }
 
   function failExpiredTask(uint256 taskId) external nonReentrant {

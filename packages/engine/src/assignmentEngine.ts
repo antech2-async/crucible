@@ -55,7 +55,7 @@ export class AssignmentEngine {
       logger.info(`Assigning agents for task ${taskId}`);
 
       // 1. Get task criteria
-      const [, , , , , criteriaURI] = await this.escrowContract.getTaskBasic(taskId);
+      const [, totalPayment, , , , criteriaURI] = await this.escrowContract.getTaskBasic(taskId);
       const criteria = (await this.storageService.downloadHistory(criteriaURI)) as any;
 
       // 2. Find agents with required capabilities
@@ -73,18 +73,23 @@ export class AssignmentEngine {
       }
 
       // 3. Score each candidate
-      const scoredAgents = await this.scoreAgents(candidates);
+      const scoredAgents = await this.scoreAgents(candidates, BigInt(totalPayment));
 
       // 4. Select best agents — one per required capability
-      const selected = this.selectBestAgents(scoredAgents, requiredCaps);
+      // Rehabilitation Logic: If an agent defected last time, they only get low-value tasks
+      const selected = this.selectBestAgents(scoredAgents, requiredCaps, BigInt(totalPayment));
 
       if (selected.length === 0) {
         logger.warn('Failed to select any agents meeting criteria');
         return;
       }
 
-      // 5. Calculate required stakes
-      const stakes = selected.map((a) => a.minStakeRequired);
+      // 5. Calculate required stakes (Dynamic Risk-Adjusted)
+      // Base stake is 10% of task payment for Elite, scaled up for lower trust
+      const baseStakePerAgent = BigInt(totalPayment) / BigInt(requiredCaps.length) / 10n; 
+      const stakes = selected.map((a) => {
+        return this.trustScorer.calculateRequiredStake(a.history, baseStakePerAgent);
+      });
       const totalStake = stakes.reduce((sum, s) => sum + BigInt(s), BigInt(0));
 
       // 6. Assign on-chain
@@ -102,20 +107,23 @@ export class AssignmentEngine {
     }
   }
 
-  private async scoreAgents(agentAddresses: string[]) {
-    return Promise.all(
+  private async scoreAgents(agentAddresses: string[], taskPayment: bigint) {
+    const beginnerThreshold = ethers.parseEther('0.005'); // 0.005 OG rehabilitation threshold
+
+    const results = await Promise.all(
       agentAddresses.map(async (address) => {
         const agentData = await this.registryContract.getAgent(address);
         const history = (await this.storageService.downloadHistory(
           agentData.historyRootHash,
         )) as any;
         
-        // Multi-Factor Meritocratic Scoring (Spec Section 15)
-        // Score = TrustScore * SpeedScore * CostScore
+        // Tit-for-Tat rehabilitation redirect
+        const coops = this.trustScorer.shouldCooperate(history);
+        if (!coops && taskPayment > beginnerThreshold) {
+            return null; // Excluded from high-value tasks due to recent defection
+        }
+
         const trustScore = this.trustScorer.calculateScore(history);
-        
-        // SpeedScore: Normalized 0-1 based on average latency in history
-        // CostScore: Inversely proportional to staking multiplier (higher tier = lower cost/multiplier)
         const speedScore = history.avgLatency ? Math.min(1, 5000 / history.avgLatency) : 0.8;
         const multiplier = this.trustScorer.getStakeMultiplier(trustScore, history.agentClass);
         const costScore = 1 / multiplier; 
@@ -133,9 +141,10 @@ export class AssignmentEngine {
         };
       }),
     );
+    return results.filter(r => r !== null) as any[];
   }
 
-  private selectBestAgents(scored: any[], requiredCaps: string[]) {
+  private selectBestAgents(scored: any[], requiredCaps: string[], _taskPayment: bigint) {
     // Meritocratic Sorting: Prioritize capacity first, then composite merit score
     const sorted = scored.sort((a, b) => {
       const aMatchCount = a.capabilities.filter((c: string) => requiredCaps.includes(c)).length;
@@ -189,6 +198,15 @@ export class AssignmentEngine {
             }
         } catch (err) {
             logger.error({ err, outputCID }, `Failed to download output from 0G Storage`);
+        }
+        // External Hash Integrity Verification (Spec Section 11)
+        // 0G Storage downloads are verified by Merkle proofs in the SDK. 
+        // We just verify that the committed CID resolved to actual content.
+        if (agentData.agentClass === 1) { // EXTERNAL
+            if (!outputCID || outputCID === '' || actualContent === '' || actualContent === 'EMPTY_OUTPUT_FAILURE') {
+                logger.warn(`External agent ${agentAddress} submitted empty or missing output hash`);
+                actualContent = 'HASH_INTEGRITY_FAILURE';
+            }
         }
 
         const passed = await this.criteriaChecker.verifyCriteria(
