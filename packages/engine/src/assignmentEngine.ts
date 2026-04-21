@@ -5,7 +5,7 @@ import { ComputeService } from './services/computeService';
 import { TrustScorer } from './trustScorer';
 import { CriteriaChecker } from './criteriaChecker';
 import { costTracker } from './costTracker';
-import { logger } from '@crucible/shared';
+import { logger, AgentHistory, TaskCriteria } from '@crucible/shared';
 
 // Load ABIs
 import AgentRegistryABI from '../../contracts/artifacts/contracts/AgentRegistry.sol/AgentRegistry.json';
@@ -56,7 +56,7 @@ export class AssignmentEngine {
 
       // 1. Get task criteria
       const [, totalPayment, , , , criteriaURI] = await this.escrowContract.getTaskBasic(taskId);
-      const criteria = (await this.storageService.downloadHistory(criteriaURI)) as any;
+      const criteria = await this.storageService.downloadJSON<TaskCriteria>(criteriaURI);
 
       // 2. Find agents with required capabilities
       const requiredCaps = criteria.requiredCapabilities as string[];
@@ -113,9 +113,28 @@ export class AssignmentEngine {
     const results = await Promise.all(
       agentAddresses.map(async (address) => {
         const agentData = await this.registryContract.getAgent(address);
-        const history = (await this.storageService.downloadHistory(
-          agentData.historyRootHash,
-        )) as any;
+        
+        let history: AgentHistory;
+        const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+        
+        if (agentData.historyRootHash === zeroHash || agentData.historyRootHash === ethers.ZeroHash) {
+            history = {
+                agentId: address,
+                inftTokenId: Number(agentData.inftTokenId),
+                agentClass: agentData.agentClass === 0 ? 'NATIVE' : 'EXTERNAL',
+                version: 1,
+                updatedAt: Math.floor(Date.now() / 1000),
+                totalTasks: 0,
+                completedHonestly: 0,
+                totalSlashEvents: 0,
+                totalDisputes: 0,
+                recentWindow: [],
+                avgResponseTimeMs: 0,
+                taskHistory: []
+            };
+        } else {
+            history = await this.storageService.downloadHistory(agentData.historyRootHash);
+        }
         
         // Tit-for-Tat rehabilitation redirect
         const coops = this.trustScorer.shouldCooperate(history);
@@ -124,7 +143,7 @@ export class AssignmentEngine {
         }
 
         const trustScore = this.trustScorer.calculateScore(history);
-        const speedScore = history.avgLatency ? Math.min(1, 5000 / history.avgLatency) : 0.8;
+        const speedScore = history.avgResponseTimeMs ? Math.min(1, 5000 / history.avgResponseTimeMs) : 0.8;
         const multiplier = this.trustScorer.getStakeMultiplier(trustScore, history.agentClass);
         const costScore = 1 / multiplier; 
 
@@ -176,55 +195,82 @@ export class AssignmentEngine {
 
       const [, totalPayment, , , , criteriaURI] = await this.escrowContract.getTaskBasic(taskId);
       const [agents] = await this.escrowContract.getTaskAgents(taskId);
-      const criteria = (await this.storageService.downloadHistory(criteriaURI)) as any;
+      const criteria = await this.storageService.downloadJSON<TaskCriteria>(criteriaURI);
 
       const criteriaResults: boolean[] = [];
       const newHistoryHashes: string[] = [];
       const newBehaviorData: bigint[] = [];
 
-      for (const agentAddress of agents) {
-        const agentData = await this.registryContract.getAgent(agentAddress);
+      // 1. Verify all outputs first to get total passing count
+      const verificationResults = await Promise.all(agents.map(async (agentAddress) => {
+          const agentData = await this.registryContract.getAgent(agentAddress);
+          const outputCID = await this.escrowContract.agentOutputHashes(taskId, agentAddress);
+          
+          let actualContent = "";
+          try {
+              if (outputCID && outputCID !== "") {
+                  const download = await this.storageService.downloadHistory(outputCID);
+                  actualContent = typeof download === 'string' ? download : JSON.stringify(download);
+              }
+          } catch (err) {
+              logger.error({ err, outputCID }, `Failed to download output from 0G Storage`);
+          }
 
-        // OCD Hardening: Fetch actual content CID from the escrow state
-        const outputCID = await this.escrowContract.agentOutputHashes(taskId, agentAddress);
+          if (agentData.agentClass === 1) { // EXTERNAL
+              if (!outputCID || outputCID === '' || actualContent === '' || actualContent === 'EMPTY_OUTPUT_FAILURE') {
+                  actualContent = 'HASH_INTEGRITY_FAILURE';
+              }
+          }
+
+          const passed = await this.criteriaChecker.verifyCriteria(
+              agentAddress,
+              taskId,
+              criteria.criteria,
+              actualContent || 'EMPTY_OUTPUT_FAILURE',
+          );
+
+          return { agentAddress, agentData, outputCID, passed };
+      }));
+
+      const passingCount = verificationResults.filter(v => v.passed).length;
+      criteriaResults.push(...verificationResults.map(v => v.passed));
+
+      // 2. Perform history updates and behavioral data aggregation
+      for (const res of verificationResults) {
+        const { agentAddress, agentData, outputCID, passed } = res;
+
+        let currentHistoryHash: string;
+        const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
         
-        let actualContent = "";
-        try {
-            if (outputCID && outputCID !== "") {
-                const download = await this.storageService.downloadHistory(outputCID);
-                actualContent = typeof download === 'string' ? download : JSON.stringify(download);
-            } else {
-                logger.warn(`No output hash found for ${agentAddress} on task ${taskId}`);
-            }
-        } catch (err) {
-            logger.error({ err, outputCID }, `Failed to download output from 0G Storage`);
+        if (agentData.historyRootHash === zeroHash || agentData.historyRootHash === ethers.ZeroHash) {
+            const emptyHistory: AgentHistory = {
+                agentId: agentAddress,
+                inftTokenId: Number(agentData.inftTokenId),
+                agentClass: agentData.agentClass === 0 ? 'NATIVE' : 'EXTERNAL',
+                version: 1,
+                updatedAt: Math.floor(Date.now() / 1000),
+                totalTasks: 0,
+                completedHonestly: 0,
+                totalSlashEvents: 0,
+                totalDisputes: 0,
+                recentWindow: [],
+                avgResponseTimeMs: 0,
+                taskHistory: []
+            };
+            const { bytes32Hash } = await this.storageService.uploadHistory(emptyHistory);
+            currentHistoryHash = bytes32Hash;
+        } else {
+            currentHistoryHash = agentData.historyRootHash;
         }
-        // External Hash Integrity Verification (Spec Section 11)
-        // 0G Storage downloads are verified by Merkle proofs in the SDK. 
-        // We just verify that the committed CID resolved to actual content.
-        if (agentData.agentClass === 1) { // EXTERNAL
-            if (!outputCID || outputCID === '' || actualContent === '' || actualContent === 'EMPTY_OUTPUT_FAILURE') {
-                logger.warn(`External agent ${agentAddress} submitted empty or missing output hash`);
-                actualContent = 'HASH_INTEGRITY_FAILURE';
-            }
-        }
-
-        const passed = await this.criteriaChecker.verifyCriteria(
-          agentAddress,
-          taskId,
-          criteria.criteria,
-          actualContent || 'EMPTY_OUTPUT_FAILURE',
-        );
-        criteriaResults.push(passed);
 
         const { newHash, updatedHistory } = await this.storageService.updateAgentHistory(
-          agentData.historyRootHash,
+          currentHistoryHash,
           {
             taskId,
             passed,
             collaborators: agents.filter((a: string) => a !== agentAddress),
             outputHash: outputCID || '',
-            paymentReceived: passed ? (BigInt(totalPayment) / BigInt(agents.length)).toString() : '0',
+            paymentReceived: passed ? (BigInt(totalPayment) / BigInt(passingCount || 1)).toString() : '0',
           },
         );
         newHistoryHashes.push(newHash);
@@ -232,7 +278,7 @@ export class AssignmentEngine {
         newBehaviorData.push(
           BigInt(updatedHistory.totalTasks),
           BigInt(updatedHistory.completedHonestly),
-          BigInt((updatedHistory.recentWindow as number[]).reduce((a, b) => a + b, 0)),
+          BigInt((updatedHistory.recentWindow as any[]).reduce((a: number, b: number) => a + b, 0)),
           BigInt(updatedHistory.totalSlashEvents),
         );
       }

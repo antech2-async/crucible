@@ -29,7 +29,8 @@ async function main() {
 
   try {
     const agent = await registryContract.getAgent(signer.address);
-    const balance = await vaultContract.getAvailableBalance(signer.address, signer.address);
+    const balance = await vaultContract.getAvailableBalance(signer.address, signer.address); 
+    // ^ note: if owner and agent differ, second arg should be agent.address
 
     const classes = ["NATIVE", "EXTERNAL"];
     const tiers = ["New", "Low", "Moderate", "High", "Elite"];

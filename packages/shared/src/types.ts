@@ -44,6 +44,8 @@ export interface Criterion {
 export interface TaskCriteria {
   taskId: string;
   requiredCapabilities: string[];
+  isSequential: boolean;
+  stages?: string[]; // stage-specific topics/instructions
   criteria: Criterion[];
   deadline: number;
 }

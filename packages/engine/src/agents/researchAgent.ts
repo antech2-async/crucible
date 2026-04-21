@@ -1,8 +1,10 @@
 import { ComputeService } from '../services/computeService';
+import { StorageService } from '../services/storageService';
 import { logger } from '@crucible/shared';
 
 export class ResearchAgent {
   private computeService: ComputeService;
+  private storageService: StorageService;
   readonly capabilities = ['research'];
   readonly agentAddress: string;
 
@@ -11,6 +13,7 @@ export class ResearchAgent {
   constructor(address: string, privateKey: string) {
     this.agentAddress = address;
     this.computeService = new ComputeService();
+    this.storageService = new StorageService(privateKey);
     this.initPromise = this.computeService.initialize(privateKey).catch((e) => {
       logger.error('Failed to initialize compute service for ResearchAgent', e);
       throw e;
@@ -62,12 +65,23 @@ export class ResearchAgent {
       }
 
       logger.info(`ResearchAgent completed inference. Attestation obtained: ${result.verified}`);
+      
+      // Upload parsed output to 0G Storage instead of returning raw text as hash
+      const outputData = {
+          agentAddress: this.agentAddress,
+          taskId: taskInput.taskId,
+          content: parsed.summary,
+          sources: parsed.sources || [],
+          wordCount: parsed.wordCount || 0,
+          timestamp: Date.now()
+      };
+      const { rootHash } = await this.storageService.uploadJSON(outputData);
 
       return {
         content: parsed.summary,
         sources: parsed.sources || [],
         wordCount: parsed.wordCount || 0,
-        outputHash: result.output, // In full implementation, this represents the 0G Storage Hash
+        outputHash: rootHash,
         attestation: result.attestation,
       };
     } catch (error) {

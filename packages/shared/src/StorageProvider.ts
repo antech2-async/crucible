@@ -31,7 +31,7 @@ export class StorageProvider {
    */
   public async commit(content: string): Promise<{ hash: string; uri: string }> {
     const hash = ethers.keccak256(ethers.toUtf8Bytes(content));
-    const uri = `0g://crucible/${hash.slice(2, 12)}`;
+    const uri = hash; // The hash is the primary identifier (CID logic)
     
     // Index it to filesystem
     const data = JSON.parse(fs.readFileSync(this.storagePath, 'utf8'));

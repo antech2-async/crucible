@@ -44,14 +44,14 @@ export class StorageService {
     return { rootHash: rootHash!, bytes32Hash };
   }
 
-  async uploadJSON(data: any): Promise<string> {
+  async uploadJSON(data: any): Promise<{ rootHash: string; bytes32Hash: string }> {
     const jsonString = JSON.stringify(data);
     const memData = new MemData(Buffer.from(jsonString));
 
     const [tree, treeErr] = await memData.merkleTree();
     if (treeErr) throw new Error(`Merkle tree error: ${treeErr}`);
 
-    const rootHash = tree!.rootHash();
+    const rootHash = tree!.rootHash()!;
     // @ts-expect-error SDK typing mismatch
     const [, uploadErr] = await this.indexer.upload(memData, this.signer);
     if (uploadErr) throw new Error(`Upload error: ${uploadErr}`);
@@ -62,7 +62,7 @@ export class StorageService {
     // Track cost (approx 0.001 OG per write based on mock network specs)
     costTracker.recordStorageWrite();
 
-    return bytes32Hash;
+    return { rootHash, bytes32Hash };
   }
 
   async downloadJSON<T = any>(rootHashOrBytes32: string): Promise<T> {
@@ -80,8 +80,8 @@ export class StorageService {
   }
 
   async uploadTaskCriteria(criteria: TaskCriteria): Promise<string> {
-    const bytes32Hash = await this.uploadJSON(criteria);
-    return this.hashMapping.get(bytes32Hash)!; // returns original rootHash as requested
+    const { rootHash } = await this.uploadJSON(criteria);
+    return rootHash; 
   }
 
   async updateAgentHistory(

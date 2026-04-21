@@ -17,8 +17,8 @@ export class AgentRunner {
   private escrowContract: ethers.Contract;
 
   // A local map of the Owner's running agent swarms
-  // Maps agentAddress -> Agent Instance
-  private localSwarm: Map<string, any> = new Map();
+  // Maps agentAddress -> { agent, signer }
+  private localSwarm: Map<string, { agent: any; signer: ethers.Wallet }> = new Map();
   private storageService: StorageService;
 
   constructor() {
@@ -31,8 +31,9 @@ export class AgentRunner {
     this.storageService = new StorageService(process.env.PRIVATE_KEY!);
   }
 
-  registerLocalAgent(address: string, agentInstance: unknown) {
-    this.localSwarm.set(address.toLowerCase(), agentInstance);
+  registerLocalAgent(address: string, agentInstance: any, privateKey: string) {
+    const signer = new ethers.Wallet(privateKey, this.provider);
+    this.localSwarm.set(address.toLowerCase(), { agent: agentInstance, signer });
     logger.info(`AgentRunner tracking local node: ${address}`);
   }
 
@@ -42,9 +43,10 @@ export class AgentRunner {
     this.escrowContract.on('AgentsAssigned', async (taskId, assignedAgents: string[], _stakes) => {
       // Check if any of OUR local agents were assigned to this task
       for (const assignedAddr of assignedAgents) {
-        const localAgent = this.localSwarm.get(assignedAddr.toLowerCase());
+        const swarmEntry = this.localSwarm.get(assignedAddr.toLowerCase());
 
-        if (localAgent) {
+        if (swarmEntry) {
+          const { agent: localAgent, signer: agentSigner } = swarmEntry;
           logger.info(
             `🟢 Swarm Match! Local Agent ${assignedAddr} was assigned to Task ${taskId.toString()}`,
           );
@@ -62,27 +64,29 @@ export class AgentRunner {
                 const prevCID = await this.escrowContract.agentOutputHashes(taskId, previousAgent);
                 
                 if (prevCID) {
-                    const download = await this.storageService.downloadHistory(prevCID);
+                    const download = await this.storageService.downloadJSON<any>(prevCID);
                     previousContext = typeof download === 'string' ? download : JSON.stringify(download);
                     logger.info(`✅ Sequential Context linked for Agent ${assignedAddr}`);
                 }
             }
 
+            // Fetch criteria from 0G Storage
+            const criteria = await this.storageService.downloadJSON<any>(taskData.criteriaURI);
+            const topic = criteria.stages?.[currentStage] || criteria.requiredCapabilities?.join(', ') || 'General research';
+
             // Wake up the local agent with real context
             const output = await localAgent.execute({
-              topic: 'Autonomous Swarm Research', // In production, derived from CriteriaURI
+              topic: topic,
               taskId: taskId.toString(),
-              minSources: 5,
-              minWords: 500,
+              minSources: criteria.criteria?.find((c: any) => c.fieldName === 'sourceCount')?.expectedValue || 3,
+              minWords: criteria.criteria?.find((c: any) => c.fieldName === 'wordCount')?.expectedValue || 300,
               previousContext: previousContext
             });
 
             logger.info(`Agent ${assignedAddr} finished inference. Submitting output to chain.`);
 
-            // In production, the AgentRunner would use the Agent's specific private key
-            // Rather than the global env key, but for demo brevity we use the connected signer.
-            const signer = new ethers.Wallet(process.env.PRIVATE_KEY!, this.provider);
-            const writableEscrow = this.escrowContract.connect(signer) as ethers.Contract;
+            // Use the agent's dedicated signer
+            const writableEscrow = this.escrowContract.connect(agentSigner) as ethers.Contract;
 
             // Submit output back to Smart Contract
             const tx = await writableEscrow.submitOutput(
@@ -115,8 +119,8 @@ if (require.main === module) {
   const runner = new AgentRunner();
 
   // Registering three different kinds of agents (in a real scenario, they have distinct addresses)
-  runner.registerLocalAgent(myAddress, new ResearchAgent(myAddress, pk));
-  // runner.registerLocalAgent(someOtherAddress, new BadActorAgent(someOtherAddress, pk));
+  runner.registerLocalAgent(myAddress, new ResearchAgent(myAddress, pk), pk);
+  // runner.registerLocalAgent(someOtherAddress, new BadActorAgent(someOtherAddress, pk), pk);
 
   runner.startListening();
 }

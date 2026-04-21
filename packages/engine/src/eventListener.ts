@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { logger } from '@crucible/shared';
+import { logger, TaskStatus } from '@crucible/shared';
 import { AssignmentEngine } from './assignmentEngine';
 import { PipelineCoordinator } from './pipelineCoordinator';
 
@@ -59,8 +59,7 @@ export class EventListener {
 
       // Check if all agents submitted to trigger judgment
       const [, , , , status] = await this.escrowContract.getTaskBasic(taskId);
-      if (status === 2n || status === 2) {
-        // TaskStatus.VERIFYING = 2
+      if (Number(status) === TaskStatus.VERIFYING) {
         logger.info(`Task ${taskId} is ready for verification. Dispatching to Judge...`);
         await this.assignmentEngine.processTaskOutputs(taskId.toString());
       }

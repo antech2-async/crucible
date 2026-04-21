@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import { AssignmentEngine } from '../src/assignmentEngine';
 import { TrustScorer } from '../src/trustScorer';
 import { StorageService } from '../src/services/storageService';
-import { logger, CONTRACT_ADDRESSES } from '@crucible/shared';
+import { logger, CONTRACT_ADDRESSES, TaskStatus, TaskCriteria } from '@crucible/shared';
 import AgentRegistryABI from '../../contracts/artifacts/contracts/AgentRegistry.sol/AgentRegistry.json';
 import TaskEscrowABI from '../../contracts/artifacts/contracts/TaskEscrow.sol/TaskEscrow.json';
 import * as dotenv from 'dotenv';
@@ -10,26 +10,35 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 /**
+ * waitForVerifying
+ * Polling helper to wait for the decentralized agents to submit their proofs
+ */
+async function waitForVerifying(escrow: ethers.Contract, taskId: string, timeoutMs = 60000): Promise<void> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+        const [, , , , status] = await escrow.getTaskBasic(taskId);
+        if (Number(status) === TaskStatus.VERIFYING) return;
+        if (Number(status) === TaskStatus.FAILED) throw new Error(`Task ${taskId} failed before VERIFYING`);
+        if (Number(status) === TaskStatus.COMPLETED) return; // Already done
+        await new Promise(r => setTimeout(r, 2000));
+    }
+    throw new Error(`Timeout waiting for task ${taskId} to reach VERIFYING`);
+}
+
+/**
  * Crucible Demo Orchestrator (Full Lifecycle)
- * This script automates a sequence of 7 tasks to demonstrate:
- * 1. Honest growth (Tasks 1-5)
- * 2. Defection (Task 6) -> Trust Decay & Stake Hike
- * 3. Rehabilitation (Task 7) -> Recovery through low-value tasks
  */
 async function main() {
     const provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
     const signer = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
     
-    // Contracts
     const registry = new ethers.Contract(CONTRACT_ADDRESSES.AGENT_REGISTRY, AgentRegistryABI.abi, provider);
     const escrow = new ethers.Contract(CONTRACT_ADDRESSES.TASK_ESCROW, TaskEscrowABI.abi, signer);
     
-    // Engine Components
     const engine = new AssignmentEngine();
     const scorer = new TrustScorer();
     const storage = new StorageService(process.env.PRIVATE_KEY!);
 
-    // Targets
     const badActorAddress = process.env.BAD_ACTOR_ADDRESS;
     if (!badActorAddress) {
         console.error("CRITICAL: BAD_ACTOR_ADDRESS not set in .env");
@@ -39,15 +48,35 @@ async function main() {
     console.log(`\n=== CRUCIBLE AUTO-DEMO: ECONOMIC HARDENING ===\n`);
     console.log(`Target Agent: ${badActorAddress}\n`);
 
-    const criteriaHash = ethers.ZeroHash;
-    const criteriaURI = "ipfs://demo-criteria";
+    // Define Real Demo Criteria
+    const demoCriteria: TaskCriteria = {
+        taskId: '',
+        requiredCapabilities: ['research'],
+        isSequential: false,
+        criteria: [
+            { fieldName: 'wordCount', operator: 'gte', expectedValue: '300', weight: 2 },
+            { fieldName: 'sourceCount', operator: 'gte', expectedValue: '3', weight: 2 },
+        ],
+        deadline: 0 // Will be set per task
+    };
+
+    console.log("Uploading Demo Criteria to 0G Storage...");
+    const { rootHash: criteriaURI, bytes32Hash: criteriaHash } = await storage.uploadJSON(demoCriteria);
+    console.log(`Criteria URI: ${criteriaURI}\n`);
 
     for (let i = 1; i <= 7; i++) {
         console.log(`\n--- TASK ${i} SEQUENCE ---`);
         
-        // 1. Log State Before
         const agentData = await registry.getAgent(badActorAddress);
-        const history = await storage.downloadHistory(agentData.historyRootHash) as any;
+        
+        // ZeroHash Guard for demo state readout
+        let history;
+        if (agentData.historyRootHash === ethers.ZeroHash || agentData.historyRootHash === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+            history = { totalTasks: 0, completedHonestly: 0, recentWindow: [], totalSlashEvents: 0 };
+        } else {
+            history = await storage.downloadHistory(agentData.historyRootHash) as any;
+        }
+
         const score = scorer.calculateScore(history);
         const nextStake = scorer.calculateRequiredStake(history, ethers.parseEther('0.01'));
         const coop = scorer.shouldCooperate(history);
@@ -58,26 +87,29 @@ async function main() {
         console.log(` > Est. Stake:  ${ethers.formatEther(nextStake)} OG`);
         console.log(` > Status:      ${coop ? "✅ TRUSTED" : "❌ DEFECTED / RESTRICTED"}`);
 
-        // 2. Post Task
         console.log(`\nPosting task ${i} to Escrow...`);
-        const taskPayment = i === 7 ? ethers.parseEther('0.001') : ethers.parseEther('0.01'); // Task 7 is a rehab task
+        const taskPayment = i === 7 ? ethers.parseEther('0.001') : ethers.parseEther('0.01'); 
         const deadline = Math.floor(Date.now() / 1000) + 3600;
         
         const postTx = await escrow.postTask(deadline, criteriaHash, criteriaURI, false, { value: taskPayment });
         const receipt = await postTx.wait();
         
-        // Extract taskId from event
-        const taskId = i - 1; // Simplified for demo if starting fresh
+        // Extract taskId from event logs
+        const event = receipt.logs.map((log: any) => {
+            try { return escrow.interface.parseLog(log); } catch (e) { return null; }
+        }).find((e: any) => e && e.name === 'TaskPosted');
+        
+        const taskId = event.args[0].toString();
         console.log(`✅ Task ${taskId} posted.`);
 
-        // 3. Automate Engine Steps (Manual trigger in demo script)
         console.log(`Engine: Assigning agents...`);
-        await engine.assignAgentsForTask(taskId.toString());
+        await engine.assignAgentsForTask(taskId);
 
-        // 4. Simulate Submission (In a real demo, agents would do this)
-        // For the demo runner, we skip to judging assume agents submitted
-        console.log(`Engine: Processing outputs & Judging...`);
-        await engine.processTaskOutputs(taskId.toString());
+        console.log(`Waiting for agents to submit outputs...`);
+        await waitForVerifying(escrow, taskId);
+
+        console.log(`Engine: All agents submitted. Processing & Judging...`);
+        await engine.processTaskOutputs(taskId);
 
         console.log(`✅ Task ${taskId} resolved.`);
         await new Promise(resolve => setTimeout(resolve, 1000));

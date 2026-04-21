@@ -1,0 +1,63 @@
+=== CRUCIBLE PROTOCOL VERIFICATION PROOF ===
+Generated: 2026-04-20T17:03:00Z
+
+--- 1. Solidity Contracts (Hardhat) ---
+Command: npx hardhat compile
+Status: SUCCESS
+Output:
+  Nothing to compile
+  No need to generate any newer typings.
+
+--- 2. Protocol Safety & Hardening Suite ---
+Command: npx hardhat test
+Status: SUCCESS (32/32 Passing)
+Details:
+  AgentRegistry
+    √ successfully registers an agent with default Tier 0
+    √ prevents duplicate INFT registrations
+    √ prevents registering the same agent address twice
+    √ allows authorized updaters to change trust tiers
+    √ increments slash events when wasSlashed is true
+    √ prevents unauthorized addresses from updating trust
+    √ returns array of agents with matching capabilities
+
+  Deep-Spec Hardening (Pull-Payments & Disputes)
+    √ prevents agents from claiming payments during the dispute window
+    √ allows owner to resolve disputes and refund poster
+    √ correctly reserves and recycles subsidies in the treasury
+    √ burns subsidy and collects fee on slash
+
+  Hardening Audit (Bayesian & Game Theory)
+    √ only slashes the current active agent in a sequential pipeline
+    √ redirects 2% of slashed stakes to the protocol treasury
+    √ applies 1.5x multiplier to External agents vs Native agents at Tier 0
+    √ ensures AgentRegistry records the 1.5x stake during registration
+
+  SlashingJudge (Consensus)
+    √ Majority Consensus: 2 Pass, 1 Fail (Bad Actor Slashed)
+    √ Total Defection: 1 Pass, 2 Fail (All returned)
+
+  TaskEscrow (Sequential Pipelines & Claims)
+    √ allows posting a task with escrowed funds
+    √ reverts if no payment sent
+    √ allows assignment engine to assign agents with stakes
+    √ reverts if unauthorized caller assigns
+    √ allows assigned agent to submit output with stake
+    √ reverts if already submitted
+    √ resolves task and pending payment is recorded
+    √ slashes agent and resolves
+    √ forces failure if deadline trap triggered
+
+  TrustCalculator (Bayesian Scoring)
+    √ returns tier 0 for new agent with < 3 tasks
+    √ returns tier 4 for agent with 95%+ weighted score
+    √ drops tier when slash events accumulate
+    √ calculates weighted score correctly (60% recent, 40% lifetime)
+    √ caps external agents at tier 3
+    √ returns strict multipliers for risk pricing
+
+--- 3. Coordination Engine (TypeScript) ---
+Command: npx tsc --noEmit
+Status: SUCCESS (No Type Errors)
+
+=== VERIFICATION COMPLETE: ALL GATES GREEN ===
