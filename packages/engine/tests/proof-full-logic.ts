@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
+import { CriteriaChecker } from '../../engine/src/criteriaChecker';
 
 /**
  * OCD-GRADE ACCOUNTABILITY PROOF SUITE
@@ -97,7 +98,10 @@ async function main() {
   const vaultBeforeA = await vault.deposits(alice.address);
 
   // Judge
-  await slicingJudge.connect(deployer).judgeTask(taskId1, [alice.address], [true], [ethers.ZeroHash], [0,0,0,0]);
+  // Judge: Alice PASS
+  // behavioralData: [totalTasks, completedHonestly, recentSum, slashEvents]
+  // We pass [10, 10, 10, 0] to reflect Alice's established history (Tier 3)
+  await slicingJudge.connect(deployer).judgeTask(taskId1, [alice.address], [true], [ethers.ZeroHash], [10, 10, 10, 0]);
 
   // Assertions
   const balAfterA = await ethers.provider.getBalance(alice.address);
@@ -151,9 +155,9 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
-  // 5. [NEW] SCENARIO 13: THE FIRST-TASK SUBSIDY (Section 15)
+  // 5. SCENARIO 3: THE FIRST-TASK SUBSIDY (Section 15)
   // -------------------------------------------------------------------------
-  console.log('\n[5/8] Scenario 13: First-Task Stake Subsidy...');
+  console.log('\n[5/7] Scenario 3: First-Task Stake Subsidy...');
 
   const charlie = (await ethers.getSigners())[5]; // Use a fresh signer
   const hashC = ethers.keccak256(ethers.toUtf8Bytes("Charlie"));
@@ -193,9 +197,9 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
-  // 5. SCENARIO 9: SEQUENTIAL PARTIAL REFUND (Honest A, Malicious B)
+  // 6. SCENARIO 4: SEQUENTIAL PARTIAL REFUND (Honest A, Malicious B)
   // -------------------------------------------------------------------------
-  console.log('\n[5/7] Scenario 9: Sequential Partial Defection...');
+  console.log('\n[6/7] Scenario 4: Sequential Partial Defection...');
 
   const payment3 = ethers.parseEther('0.2'); // 0.1 per agent
   const deadline3 = (await ethers.provider.getBlock('latest'))!.timestamp + 3600;
@@ -220,7 +224,7 @@ async function main() {
   const vaultBeforePartialB = await vault.deposits(bob.address);
 
   // Judge: Alice PASS, Bob FAIL
-  await slicingJudge.connect(deployer).judgeTask(taskId3, [alice.address, bob.address], [true, false], [ethers.ZeroHash, ethers.ZeroHash], [0,0,0,0, 0,0,0,0]);
+  await slicingJudge.connect(deployer).judgeTask(taskId3, [alice.address, bob.address], [true, false], [ethers.ZeroHash, ethers.ZeroHash], [10,10,10,0, 1,0,0,1]);
 
   // OCD: Check Treasury after Bob slash
   const treasury = await vault.slashedTreasury();
@@ -242,9 +246,9 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
-  // 6. SCENARIO 5: DISPUTE PROTOCOL LOCK
+  // 7. SCENARIO 5: DISPUTE PROTOCOL LOCK
   // -------------------------------------------------------------------------
-  console.log('\n[6/7] Scenario 5: Dispute Window Locking...');
+  console.log('\n[7/7] Scenario 5: Dispute Window Locking...');
 
   const payment4 = ethers.parseEther('0.1');
   const deadline4 = (await ethers.provider.getBlock('latest'))!.timestamp + 3600;
@@ -256,7 +260,7 @@ async function main() {
   const resultA2 = ethers.hexlify(ethers.toUtf8Bytes("ResultA2"));
   const attestationA2 = ethers.hexlify(ethers.toUtf8Bytes("AttestationA2"));
   await escrow.connect(alice).submitOutput(taskId4, resultA2, attestationA2);
-  await slicingJudge.connect(deployer).judgeTask(taskId4, [alice.address], [true], [ethers.ZeroHash], [0,0,0,0]);
+  await slicingJudge.connect(deployer).judgeTask(taskId4, [alice.address], [true], [ethers.ZeroHash], [10,10,10,0]);
 
   // Dispute!
   await escrow.connect(poster).disputeTask(taskId4);
@@ -269,12 +273,12 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
-  // 7. BAYESIAN STAKE MULTIPLIER AUDIT
+  // 8. BAYESIAN STAKE MULTIPLIER AUDIT
   // -------------------------------------------------------------------------
-  console.log('\n[7/7] Bayesian Multiplier Audit...');
+  console.log('\n[OCD] Bayesian Multiplier Audit...');
 
-  const aliceMult = await calculator.getStakeMultiplier(3); // Tier 3
-  const bobMult = await calculator.getStakeMultiplier(0);   // Tier 0
+  const aliceMult = await calculator.getStakeMultiplier(3, 1); // Tier 3, EXTERNAL
+  const bobMult = await calculator.getStakeMultiplier(0, 1);   // Tier 0, EXTERNAL
 
   console.log(`    Alice (Tier 3) Multiplier: ${aliceMult} BP`);
   console.log(`    Bob (Tier 0) Multiplier:   ${bobMult} BP`);
@@ -289,11 +293,12 @@ async function main() {
   // judgeTask passes [totalTasks, honestly, recentWindowSum, slashEvents]
   // Let's simulate a Tier 4 update for Bob (EXTERNAL)
   await registry.connect(deployer).updateHistoryAndTrust(bob.address, hashB, 4, false);
-  const fakeUpdateTier = (await registry.getAgent(bob.address)).trustTier;
   
   // Now check the internal TrustCalculator logic directly
   // TrustCalculator.AgentClass: NATIVE=0, EXTERNAL=1
   const bobFinalTier = await calculator.calculateTrustTier(10, 10, 10, 0, 1);
+  expect(Number(bobFinalTier)).to.be.lte(3, "External agent exceeded tier 3 cap");
+  console.log(`    ✅ Success: External agent capped at tier ${bobFinalTier} (max 3).`);
   
   // OCD: VERIFY SEQUENTIAL HANDOFF CONTEXT (Scenario 11)
   console.log('\n[OCD] Scenario 11: Stateful Sequential Handoff...');
@@ -306,15 +311,15 @@ async function main() {
 
   // OCD: VERIFY ADVANCED CRITERIA (Scenario 12)
   console.log('\n[OCD] Scenario 12: JSON Integrity Enforcement...');
-  const checker = new (require('../src/criteriaChecker').CriteriaChecker)();
+  const checker = new CriteriaChecker();
   
   const badContent = "This is not JSON, it's just a story.";
   const goodContent = JSON.stringify({ summary: "0G is fast", sources: ["https://0g.ai"], wordCount: 10 });
   
   const jsonCriteria = [{ fieldName: 'content', operator: 'json', expectedValue: 'true' }];
   
-  const failedJson = await checker.verifyCriteria('0x123', 99, jsonCriteria, badContent);
-  const passedJson = await checker.verifyCriteria('0x123', 99, jsonCriteria, goodContent);
+  const failedJson = await checker.verifyCriteria('0x123', '99', jsonCriteria, badContent);
+  const passedJson = await checker.verifyCriteria('0x123', '99', jsonCriteria, goodContent);
   
   if (!failedJson && passedJson) {
       console.log('    ✅ Success: Autonomous Judge correctly slashes non-JSON defectors.');

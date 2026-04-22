@@ -178,4 +178,8 @@ contract AgentRegistry is Ownable, ReentrancyGuard {
   function getAgent(address agentAddress) external view returns (Agent memory) {
     return agents[agentAddress];
   }
+
+  function getAgentList() external view returns (address[] memory) {
+    return agentList;
+  }
 }

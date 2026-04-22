@@ -68,38 +68,27 @@ export default function Arena() {
   const { data: agentAddresses } = useReadContract({
     address: CONTRACT_ADDRESSES.AGENT_REGISTRY as `0x${string}`,
     abi: AGENT_REGISTRY_ABI,
-    functionName: 'agentList',
+    functionName: 'getAgentList',
     // In a production app, we would use a more sophisticated multicall pattern
   });
 
   // 3. Populate Agent List with Real Telemetry
   useEffect(() => {
     async function fetchAgents() {
-      if (!agentAddresses || !Array.isArray(agentAddresses)) return;
-
       try {
-        const agentList = [];
-        // Iterate through valid agent addresses from the contract
-        for (const addr of agentAddresses) {
-          // In production, we'd use multicall. Here we simulate the fetch for high-fidelity data.
-          // Note: for a truly production-grade app, we'd use useReadContracts hook above.
-          agentList.push({
-            id: addr.slice(0, 10),
-            tier: Math.floor(Math.random() * 5), // Mock for demo sweep, would be registry.getAgent(addr).trustTier
-            score: 0.75 + Math.random() * 0.2, 
-            tasks: 12,
-            status: 'idle',
-            window: [1, 1, 0, 1, 1, 1, 1, 1, 1, 1],
-            class: Math.random() > 0.5 ? 'native' : 'external',
-          });
-        }
-        setAgents(agentList);
+        const response = await fetch('/api/agents');
+        if (!response.ok) throw new Error('Failed to fetch agents');
+        const data = await response.json();
+        setAgents(data);
       } catch (err) {
         console.error('Failed to sync agent telemetry', err);
       }
     }
+    
     fetchAgents();
-  }, [agentAddresses]);
+    const interval = setInterval(fetchAgents, 10000); // Polling every 10s
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div
@@ -250,10 +239,10 @@ export default function Arena() {
               events.map((ev, i) => (
                 <EventRow
                   key={i}
-                  type={ev.eventName}
+                  type={ev.type}
                   msg={
-                    ev.eventName === 'TaskPosted'
-                      ? `New task #${ev.args.taskId.toString()} posted by ${ev.args.poster.slice(0, 6)}`
+                    ev.type === 'TaskPosted'
+                      ? `New task #${ev.raw.args?.taskId?.toString()} posted by ${ev.raw.args?.poster?.slice(0, 6)}`
                       : `Activity on 0G Network`
                   }
                   time="Just now"

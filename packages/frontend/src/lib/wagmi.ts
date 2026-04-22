@@ -1,5 +1,4 @@
 import { http, createConfig } from 'wagmi';
-import { mainnet, sepolia } from 'wagmi/chains';
 
 // Define 0G Galileo Testnet Chain
 export const ogGalileo = {
@@ -16,10 +15,8 @@ export const ogGalileo = {
 };
 
 export const config = createConfig({
-  chains: [ogGalileo, mainnet, sepolia],
+  chains: [ogGalileo],
   transports: {
     [ogGalileo.id]: http(),
-    [mainnet.id]: http(),
-    [sepolia.id]: http(),
   },
 });

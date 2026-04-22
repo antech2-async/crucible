@@ -63,6 +63,7 @@ export default function AgentsPage() {
             tasks: 47,
             status: 'idle',
             window: [1, 1, 1, 1],
+            class: 'native',
           }}
         />
         <AgentCard
@@ -73,6 +74,7 @@ export default function AgentsPage() {
             tasks: 32,
             status: 'working',
             window: [1, 1, 1, 0, 1],
+            class: 'native',
           }}
         />
         <AgentCard
@@ -83,6 +85,7 @@ export default function AgentsPage() {
             tasks: 12,
             status: 'idle',
             window: [1, 0, 1, 1],
+            class: 'native',
           }}
         />
         <AgentCard
@@ -93,6 +96,7 @@ export default function AgentsPage() {
             tasks: 4,
             status: 'idle',
             window: [0, 1, 0],
+            class: 'native',
           }}
         />
       </div>

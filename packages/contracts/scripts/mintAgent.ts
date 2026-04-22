@@ -27,7 +27,7 @@ async function mintAgent(agentName: string, capabilities: string[], privateKey: 
   };
 
   console.log('Uploading initial history to 0G Storage...');
-  const historyHash = await storageService.uploadHistory(initialHistory as any);
+  const { bytes32Hash: historyHash } = await storageService.uploadHistory(initialHistory as any);
 
   // 2. Create encrypted metadata URI
   const metadata = {
@@ -38,8 +38,8 @@ async function mintAgent(agentName: string, capabilities: string[], privateKey: 
   };
   const metadataHash = ethers.keccak256(ethers.toUtf8Bytes(JSON.stringify(metadata)));
 
-  console.log('Uploading metadata hash to 0G Storage...');
-  const encryptedURI = await storageService.uploadHistory(metadata as any); // Using uploadHistory for URI generation
+  console.log('Uploading metadata JSON to 0G Storage...');
+  const { rootHash: encryptedURI } = await storageService.uploadJSON(metadata);
 
   // 3. Mint INFT
   const inftContract = new ethers.Contract(
@@ -53,7 +53,7 @@ async function mintAgent(agentName: string, capabilities: string[], privateKey: 
     await signer.getAddress(),
     encryptedURI,
     metadataHash,
-    '0x', // Initial proof for testnet parity
+    "0x",
     { value: ethers.parseEther('0.001') },
   );
 
@@ -71,7 +71,7 @@ async function mintAgent(agentName: string, capabilities: string[], privateKey: 
   );
 
   console.log('Registering on AgentRegistry...');
-  const regTx = await registryContract.registerAgent(
+  const regTx = await registryContract.registerNativeAgent(
     await signer.getAddress(),
     tokenId,
     historyHash,

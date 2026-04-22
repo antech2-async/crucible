@@ -14,8 +14,6 @@ export interface TaskResult {
 export class StorageService {
   private indexer: Indexer;
   private signer: ethers.Wallet;
-  // Local mapping: bytes32 on-chain hash → original 0G root hash string (Section 8 spec)
-  private hashMapping: Map<string, string> = new Map();
 
   constructor(privateKey: string) {
     const provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
@@ -31,17 +29,18 @@ export class StorageService {
     if (treeErr) throw new Error(`Merkle tree error: ${treeErr}`);
 
     const rootHash = tree!.rootHash();
+    if (!rootHash) throw new Error('Merkle root hash generation failed');
+
     // @ts-expect-error SDK typing mismatch
     const [, uploadErr] = await this.indexer.upload(memData, this.signer);
     if (uploadErr) throw new Error(`Upload error: ${uploadErr}`);
 
-    const bytes32Hash = ethers.keccak256(ethers.toUtf8Bytes(rootHash));
-    this.hashMapping.set(bytes32Hash, rootHash);
+    const bytes32Hash = rootHash;
     
     // Track cost (approx 0.001 OG per write based on mock network specs)
     costTracker.recordStorageWrite();
 
-    return { rootHash: rootHash!, bytes32Hash };
+    return { rootHash, bytes32Hash };
   }
 
   async uploadJSON(data: any): Promise<{ rootHash: string; bytes32Hash: string }> {
@@ -51,22 +50,23 @@ export class StorageService {
     const [tree, treeErr] = await memData.merkleTree();
     if (treeErr) throw new Error(`Merkle tree error: ${treeErr}`);
 
-    const rootHash = tree!.rootHash()!;
+    const rootHash = tree!.rootHash();
+    if (!rootHash) throw new Error('Merkle root hash generation failed');
+
     // @ts-expect-error SDK typing mismatch
     const [, uploadErr] = await this.indexer.upload(memData, this.signer);
     if (uploadErr) throw new Error(`Upload error: ${uploadErr}`);
 
-    const bytes32Hash = ethers.keccak256(ethers.toUtf8Bytes(rootHash));
-    this.hashMapping.set(bytes32Hash, rootHash);
+    const bytes32Hash = rootHash;
     
     // Track cost (approx 0.001 OG per write based on mock network specs)
     costTracker.recordStorageWrite();
 
-    return { rootHash, bytes32Hash };
+    return { rootHash: rootHash!, bytes32Hash };
   }
 
   async downloadJSON<T = any>(rootHashOrBytes32: string): Promise<T> {
-    const rootHash = this.hashMapping.get(rootHashOrBytes32) ?? rootHashOrBytes32;
+    const rootHash = rootHashOrBytes32;
     // @ts-expect-error SDK typing mismatch
     const [data, err] = await this.indexer.download(rootHash);
     if (err) throw new Error(`Download error: ${err}`);
