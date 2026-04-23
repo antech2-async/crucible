@@ -38,7 +38,7 @@ async function main() {
   console.log(`    Task ID: ${taskId} created.`);
 
   // 2. Assign an agent (Bob)
-  const agentList = await registry.agentList();
+  const agentList = await registry.getAgentList();
   const bobAddress = agentList[1]; // Bob
   const stakeAmount = ethers.parseEther('0.001');
 

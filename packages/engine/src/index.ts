@@ -67,7 +67,7 @@ class BrokerEngine {
     // In a real production engine, we would read the criteriaURI from 0G Storage
     // and match agents based on required capabilities.
     // For the demo, we pick from our canonical pool: Alice & BadBot.
-    const agentAddresses = await this.registry.agentList();
+    const agentAddresses = await this.registry.getAgentList();
     if (agentAddresses.length < 2) return;
 
     // Pick top 2 for the task (simplified assignment)

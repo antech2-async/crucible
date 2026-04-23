@@ -39,7 +39,7 @@ async function main() {
   console.log(`    Task ID: ${taskId}`);
 
   // 2. Assign Alice (Researcher) and BadBot (Writer)
-  const agentList = await registry.agentList();
+  const agentList = await registry.getAgentList();
   const aliceAddress = agentList[0];
   const badBotAddress = agentList[3]; 
 

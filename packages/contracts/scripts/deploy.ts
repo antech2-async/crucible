@@ -3,83 +3,125 @@ import { FetchRequest } from 'ethers';
 import axios from "axios";
 import { storage } from '../../shared/src/StorageProvider';
 
+// Disable global fetch to workaround undici maxRedirections bug in Node v22 / ethers v6
+try {
+    // @ts-ignore
+    global.fetch = undefined;
+} catch (e) {}
+
 // Definitive workaround for the Node v22 undici maxRedirections bug.
 // We override the global ethers fetcher to use Axios, which handles redirects stably.
 FetchRequest.registerGetUrl(async (req) => {
+    try {
+        const response = await axios({
+            url: req.url,
+            method: req.method,
+            data: req.body ? Buffer.from(req.body) : undefined,
+            headers: req.headers,
+            responseType: 'arraybuffer',
+            maxRedirects: 5,
+        });
+
+        return {
+            statusCode: response.status,
+            statusMessage: response.statusText,
+            headers: response.headers as any,
+            body: new Uint8Array(response.data)
+        };
+    } catch (error: any) {
+        if (error.response) {
+            return {
+                statusCode: error.response.status,
+                statusMessage: error.response.statusText,
+                headers: error.response.headers as any,
+                body: new Uint8Array(error.response.data)
+            };
+        }
+        throw error;
+    }
+});
+
+async function main() {
+  const url = process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai';
+  const privateKey = process.env.PRIVATE_KEY;
+  if (!privateKey) throw new Error("PRIVATE_KEY not set in .env");
+
+  console.log(`Connecting to: ${url}`);
+  
+  // Custom fetcher for Ethers v6 to avoid undici maxRedirections bug
+  const customFetcher = async (req: FetchRequest) => {
     const response = await axios({
         url: req.url,
         method: req.method,
-        data: req.body,
+        data: req.body ? Buffer.from(req.body) : undefined,
         headers: req.headers,
         responseType: 'arraybuffer',
     });
-
     return {
         statusCode: response.status,
         statusMessage: response.statusText,
         headers: response.headers as any,
         body: new Uint8Array(response.data)
     };
-});
-async function main() {
-  const [deployer] = await ethers.getSigners();
+  };
+
+  const provider = new ethers.JsonRpcProvider(url, undefined, {
+    staticNetwork: new ethers.Network('0g-galileo', 16602),
+  });
+  // @ts-ignore
+  provider._getConnection().fetcher = customFetcher;
+
+  const wallet = new ethers.Wallet(privateKey, provider);
+  const deployer = wallet;
   console.log('Deploying contracts with account:', deployer.address);
 
+  const getFactory = (name: string) => {
+    const artifact = require(`../artifacts/contracts/${name}.sol/${name}.json`);
+    return new ethers.ContractFactory(artifact.abi, artifact.bytecode, deployer);
+  };
+
   // 1. Deploy AgentRegistry
-  const AgentRegistry = await ethers.getContractFactory('AgentRegistry');
-  const registry = await AgentRegistry.deploy();
-  await registry.waitForDeployment();
+  const registry = await (await getFactory('AgentRegistry').deploy()).waitForDeployment();
   console.log('AgentRegistry deployed to:', await registry.getAddress());
 
   // 2. Deploy TrustCalculator
-  const TrustCalculator = await ethers.getContractFactory('TrustCalculator');
-  const calculator = await TrustCalculator.deploy();
-  await calculator.waitForDeployment();
+  const calculator = await (await getFactory('TrustCalculator').deploy()).waitForDeployment();
   console.log('TrustCalculator deployed to:', await calculator.getAddress());
 
   // 3. Deploy AgentStakeVault
-  const AgentStakeVault = await ethers.getContractFactory('AgentStakeVault');
-  const vault = await AgentStakeVault.deploy();
-  await vault.waitForDeployment();
+  const vault = await (await getFactory('AgentStakeVault').deploy()).waitForDeployment();
   console.log('AgentStakeVault deployed to:', await vault.getAddress());
 
   // 4. Deploy TaskEscrow
-  const TaskEscrow = await ethers.getContractFactory('TaskEscrow');
-  const escrow = await TaskEscrow.deploy(
+  const escrow = await (await getFactory('TaskEscrow').deploy(
     deployer.address, 
     await vault.getAddress(), 
     await registry.getAddress()
-  );
-  await escrow.waitForDeployment();
+  )).waitForDeployment();
   console.log('TaskEscrow deployed to:', await escrow.getAddress());
 
   // 5. Deploy SlashingJudge
-  const SlashingJudge = await ethers.getContractFactory('SlashingJudge');
-  const judge = await SlashingJudge.deploy(
+  const judge = await (await getFactory('SlashingJudge').deploy(
     await registry.getAddress(),
     await escrow.getAddress(),
     await calculator.getAddress()
-  );
-  await judge.waitForDeployment();
+  )).waitForDeployment();
   console.log('SlashingJudge deployed to:', await judge.getAddress());
 
   // 6. Deploy CrucibleINFT
-  const CrucibleINFT = await ethers.getContractFactory('CrucibleINFT');
-  const inft = await CrucibleINFT.deploy(deployer.address);
-  await inft.waitForDeployment();
+  const inft = await (await getFactory('CrucibleINFT').deploy(deployer.address)).waitForDeployment();
   console.log('CrucibleINFT deployed to:', await inft.getAddress());
 
   // 7. Set authorizations
   console.log('Setting authorizations...');
-  await registry.addAuthorizedUpdater(await judge.getAddress());
-  await registry.setINFTContract(await inft.getAddress());
-  await escrow.setSlashingJudge(await judge.getAddress());
-  await vault.setEscrowContract(await escrow.getAddress());
+  await (await (registry as any).addAuthorizedUpdater(await judge.getAddress())).wait();
+  await (await (registry as any).setINFTContract(await inft.getAddress())).wait();
+  await (await (escrow as any).setSlashingJudge(await judge.getAddress())).wait();
+  await (await (vault as any).setEscrowContract(await escrow.getAddress())).wait();
   
-  // Deployer acts as engine for demo: (assignmentEngine = deployer automatically passed to TaskEscrow)
-  await judge.addAuthorizedCaller(deployer.address);
+  await (await (judge as any).addAuthorizedCaller(deployer.address)).wait();
 
-  // 8. Seed beginner task pool (Section 15)
+  // 8. Seed beginner task pool
   console.log('Seeding beginner task pool...');
   const beginnerCriteria = {
     requiredCapabilities: ['research'],
@@ -95,11 +137,11 @@ async function main() {
     const criteriaBytes32 = ethers.keccak256(ethers.toUtf8Bytes(criteriaRootHash));
     const deadline = Math.floor(Date.now() / 1000) + 86400; // 24 hours
     
-    const taskBatch = 5; // Reduced from 10 to speed up deployment demo
+    const taskBatch = 5; 
     const paymentPerTask = ethers.parseEther('0.001');
 
     for (let i = 0; i < taskBatch; i++) {
-        await (await escrow.postTask(deadline, criteriaBytes32, criteriaURI, false, { value: paymentPerTask })).wait();
+        await (await (escrow as any).postTask(deadline, criteriaBytes32, criteriaURI, false, { value: paymentPerTask })).wait();
     }
     console.log(`Successfully seeded ${taskBatch} beginner tasks.`);
   } catch (e) {

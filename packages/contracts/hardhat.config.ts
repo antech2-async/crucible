@@ -1,6 +1,8 @@
-// Disable global fetch to workaround undici maxRedirections bug in ethers v6/hardhat
-// @ts-ignore
-global.fetch = undefined;
+// Disable global fetch to workaround undici maxRedirections bug in Node v22 / ethers v6
+try {
+    // @ts-ignore
+    global.fetch = undefined;
+} catch (e) {}
 
 import { HardhatUserConfig } from 'hardhat/config';
 import '@nomicfoundation/hardhat-toolbox';
@@ -27,6 +29,11 @@ const config: HardhatUserConfig = {
     '0g-galileo': {
       url: process.env.OG_RPC_URL || 'https://rpc.ankr.com/0g_galileo_testnet_evm',
       chainId: Number(process.env.OG_CHAIN_ID) || 16602,
+      accounts: PRIVATE_KEY !== '' ? [PRIVATE_KEY] : [],
+    },
+    testnet: {
+      url: process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai',
+      chainId: 16602,
       accounts: PRIVATE_KEY !== '' ? [PRIVATE_KEY] : [],
     },
   },

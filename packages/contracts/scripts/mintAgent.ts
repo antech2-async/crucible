@@ -3,6 +3,9 @@ import { StorageService } from '../../engine/src/services/storageService';
 import CrucibleINFT from '../artifacts/contracts/CrucibleINFT.sol/CrucibleINFT.json';
 import AgentRegistryABI from '../artifacts/contracts/AgentRegistry.sol/AgentRegistry.json';
 import { CONTRACT_ADDRESSES } from '@crucible/shared';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+dotenv.config({ path: path.join(__dirname, '../../../.env') });
 
 async function mintAgent(agentName: string, capabilities: string[], privateKey: string) {
   const provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);

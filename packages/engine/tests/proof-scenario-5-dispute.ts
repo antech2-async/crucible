@@ -37,7 +37,7 @@ async function main() {
   console.log(`    Task ID: ${taskId}`);
 
   // 2. Assign Charlie (Tier 1)
-  const agentList = await registry.agentList();
+  const agentList = await registry.getAgentList();
   const charlieAddress = agentList[2]; 
 
   console.log(`[2] Assigning Charlie (${charlieAddress})...`);

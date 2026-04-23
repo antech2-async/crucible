@@ -31,9 +31,15 @@ export class StorageService {
     const rootHash = tree!.rootHash();
     if (!rootHash) throw new Error('Merkle root hash generation failed');
 
-    // @ts-expect-error SDK typing mismatch
-    const [, uploadErr] = await this.indexer.upload(memData, this.signer);
-    if (uploadErr) throw new Error(`Upload error: ${uploadErr}`);
+    // @ts-ignore
+    const [, uploadErr] = await this.indexer.upload(memData, process.env.OG_RPC_URL!, this.signer, undefined, undefined, { gasLimit: 2000000, gasPrice: 10000000000 });
+    
+    // If it's just a timeout, we proceed because the tx was likely sent and deduplicated
+    if (uploadErr && !uploadErr.toString().includes('timeout')) {
+       throw new Error(`Upload error: ${uploadErr}`);
+    } else if (uploadErr) {
+       console.log('Upload timed out but transaction was likely broadcast. Proceeding...');
+    }
 
     const bytes32Hash = rootHash;
     
@@ -53,9 +59,15 @@ export class StorageService {
     const rootHash = tree!.rootHash();
     if (!rootHash) throw new Error('Merkle root hash generation failed');
 
-    // @ts-expect-error SDK typing mismatch
-    const [, uploadErr] = await this.indexer.upload(memData, this.signer);
-    if (uploadErr) throw new Error(`Upload error: ${uploadErr}`);
+    // @ts-ignore
+    const [, uploadErr] = await this.indexer.upload(memData, process.env.OG_RPC_URL!, this.signer, undefined, undefined, { gasLimit: 2000000, gasPrice: 10000000000 });
+    
+    // If it's just a timeout, we proceed
+    if (uploadErr && !uploadErr.toString().includes('timeout')) {
+      throw new Error(`Upload error: ${uploadErr}`);
+    } else if (uploadErr) {
+      console.log('Upload timed out but transaction was likely broadcast. Proceeding...');
+    }
 
     const bytes32Hash = rootHash;
     

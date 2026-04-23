@@ -20,5 +20,5 @@
     }
   },
   "exclude": ["node_modules", "**/dist", "**/test"],
-  "include": ["packages/**/*", "shared/**/*"]
+  "include": ["packages/**/*", "shared/**/*", "packages/contracts/artifacts/**/*"]
 }
