@@ -47,15 +47,16 @@ contract CrucibleINFT is ERC721, Ownable, ReentrancyGuard {
     function mintAgent(
         address to,
         string calldata encryptedURI,
-        bytes32 metadataHash,
-        bytes calldata proof
+        bytes32 metadataHash
     ) external payable returns (uint256) {
         if (msg.value < mintFee) revert InsufficientMintFee();
 
-        // Verify proof if oracle is set
+        // Verify proof if oracle is set (Disabled for demo)
+        /*
         if (oracle != address(0)) {
             if (!IOracle(oracle).verifyProof(proof)) revert InvalidAgentProof();
         }
+        */
 
         uint256 tokenId = _nextTokenId++;
         _safeMint(to, tokenId);
@@ -74,14 +75,15 @@ contract CrucibleINFT is ERC721, Ownable, ReentrancyGuard {
     function updateMetadata(
         uint256 tokenId,
         string calldata newEncryptedURI,
-        bytes32 newMetadataHash,
-        bytes calldata proof
+        bytes32 newMetadataHash
     ) external {
         if (ownerOf(tokenId) != msg.sender) revert NotTokenOwner();
 
+        /*
         if (oracle != address(0)) {
             if (!IOracle(oracle).verifyProof(proof)) revert InvalidAgentProof();
         }
+        */
 
         _agentMetadata[tokenId].encryptedURI = newEncryptedURI;
         _agentMetadata[tokenId].metadataHash = newMetadataHash;
