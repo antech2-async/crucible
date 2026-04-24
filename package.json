@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "Crucible - AI Agent Coordination Layer for 0G Hackathon",
+  "engines": {
+    "node": ">=20 <21",
+    "npm": ">=10 <11"
+  },
   "workspaces": [
     "packages/*"
   ],
