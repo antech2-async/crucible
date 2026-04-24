@@ -7,7 +7,10 @@ import {
   SLASHING_JUDGE_ABI
 } from '@crucible/shared';
 
-dotenv.config();
+import { setupEthersWorkaround } from '../../shared/src/node-utils';
+
+dotenv.config({ path: '../../.env' });
+setupEthersWorkaround();
 
 /**
  * Crucible Broker Engine

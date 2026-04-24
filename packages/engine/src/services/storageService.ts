@@ -2,6 +2,10 @@ import { Indexer, MemData } from '@0glabs/0g-ts-sdk';
 import { ethers } from 'ethers';
 import { costTracker } from '../costTracker';
 import { AgentHistory, TaskHistoryEntry, TaskCriteria, Criterion } from '@crucible/shared';
+import * as path from 'path';
+import * as os from 'os';
+import * as fs from 'fs';
+import { storage } from '../../../shared/src/StorageProvider';
 
 export interface TaskResult {
   taskId: string;
@@ -79,11 +83,25 @@ export class StorageService {
 
   async downloadJSON<T = any>(rootHashOrBytes32: string): Promise<T> {
     const rootHash = rootHashOrBytes32;
-    // @ts-expect-error SDK typing mismatch
-    const [data, err] = await this.indexer.download(rootHash);
-    if (err) throw new Error(`Download error: ${err}`);
+    const tempPath = path.join(os.tmpdir(), `0g-engine-temp-${rootHash}.json`);
+    
+    // @ts-ignore
+    const err = await this.indexer.download(rootHash, tempPath, false);
+    
+    if (err || !fs.existsSync(tempPath)) {
+        // Fallback to local storage provider if it exists
+        const content = await storage.fetch(rootHash);
+        if (content && !content.startsWith('SIMULATED_CONTENT')) {
+            return JSON.parse(content) as T;
+        }
+        throw new Error(`Download error: ${err || 'File not found'}`);
+    }
 
-    const jsonString = Buffer.from(data!).toString('utf-8');
+    const data = fs.readFileSync(tempPath);
+    const jsonString = data.toString('utf-8');
+    // Cleanup
+    try { fs.unlinkSync(tempPath); } catch (e) {}
+    
     return JSON.parse(jsonString) as T;
   }
 

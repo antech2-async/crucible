@@ -7,6 +7,8 @@ import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Users, Zap, Coins, Settings, ExternalLink, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { useBalance } from 'wagmi';
+import { CONTRACT_ADDRESSES } from '@crucible/shared';
 
 const NAV_ITEMS = [
   { name: 'Arena', href: '/', icon: LayoutDashboard },
@@ -33,6 +35,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  const { data: slashBalance } = useBalance({
+    address: CONTRACT_ADDRESSES.SLASHING_JUDGE as `0x${string}`,
+  });
 
   return (
     <>
@@ -134,7 +140,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
             </div>
             <div className="flex items-end gap-1">
-              <span className="text-lg font-black tracking-tighter text-amber-400">1.240</span>
+              <span className="text-lg font-black tracking-tighter text-amber-400">
+                {slashBalance ? parseFloat(slashBalance.formatted).toFixed(3) : '0.000'}
+              </span>
               <span className="text-[9px] font-bold text-amber-600 mb-1">0G</span>
             </div>
           </div>

@@ -19,7 +19,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} min-h-screen antialiased bg-[#020617] text-white flex`}>
+      <body 
+        className={`${inter.className} min-h-screen antialiased bg-[#020617] text-white flex`}
+        suppressHydrationWarning
+      >
         <Providers>
           <DashboardLayout>{children}</DashboardLayout>
         </Providers>

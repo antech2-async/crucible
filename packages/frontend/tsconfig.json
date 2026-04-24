@@ -28,6 +28,9 @@
       ],
       "@crucible/shared": [
         "../shared/src"
+      ],
+      "@crucible/shared/*": [
+        "../shared/src/*"
       ]
     }
   },

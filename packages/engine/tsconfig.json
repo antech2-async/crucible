@@ -10,7 +10,8 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@crucible/shared": ["../shared/src/index.ts"]
+      "@crucible/shared": ["../shared/src/index.ts"],
+      "@crucible/shared/*": ["../shared/src/*"]
     }
   },
   "include": ["./src", "./scripts", "../contracts/artifacts/**/*"]

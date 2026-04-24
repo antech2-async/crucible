@@ -17,11 +17,13 @@ export default function Arena() {
   const [adminMode, setAdminMode] = useState(false);
 
   // 1. Fetch Summary Metrics
-  const { data: totalAgents } = useReadContract({
+  const { data: agentList } = useReadContract({
     address: CONTRACT_ADDRESSES.AGENT_REGISTRY as `0x${string}`,
     abi: AGENT_REGISTRY_ABI,
-    functionName: 'getTotalAgents',
+    functionName: 'getAgentList',
   });
+
+  const totalAgents = agentList ? (agentList as any[]).length : 0;
 
   const { data: escrowBalance } = useBalance({
     address: CONTRACT_ADDRESSES.TASK_ESCROW as `0x${string}`,
