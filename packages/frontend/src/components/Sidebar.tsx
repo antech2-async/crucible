@@ -103,9 +103,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
 
           {/* Testnet indicator */}
-          <div className="mt-2 flex items-center gap-2 px-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-            <span className="text-[9px] font-mono uppercase tracking-widest text-on-surface-dim">
+          <div className="mt-2 flex items-center gap-1.5 px-1 overflow-hidden">
+            <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse flex-shrink-0" />
+            <span className="text-[9px] font-mono uppercase tracking-widest text-on-surface-dim truncate">
               Galileo
             </span>
           </div>

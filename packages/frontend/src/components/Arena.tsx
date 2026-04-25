@@ -99,7 +99,7 @@ export default function Arena() {
   const syncStatus = agents.length > 0 ? 'COMPLETE' : 'SYNCING';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Network shock banner */}
       <AnimatePresence>
         {networkShock && (
@@ -120,12 +120,12 @@ export default function Arena() {
       </AnimatePresence>
 
       {/* Row 1: Coordination Mesh + Metric Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:h-[272px]">
 
         {/* Coordination Mesh — 8 cols */}
         <div className="lg:col-span-8 bg-surface-container border border-border flex flex-col">
           {/* Panel header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
             <div className="flex items-center gap-2.5">
               <Share2 size={13} className="text-primary/60" />
               <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-on-surface">
@@ -143,7 +143,7 @@ export default function Arena() {
           </div>
 
           {/* Mesh visualizer */}
-          <div className="flex-1 relative min-h-[220px] bg-surface overflow-hidden">
+          <div className="flex-1 relative bg-surface overflow-hidden" style={{ minHeight: 0 }}>
             {/* Channel labels */}
             <div className="absolute top-3 left-4 z-10 space-y-0.5">
               <p className="text-[8px] font-mono text-on-surface-dim uppercase tracking-widest">
@@ -165,11 +165,11 @@ export default function Arena() {
         </div>
 
         {/* Metric cards — 4 cols */}
-        <div className="lg:col-span-4 flex flex-col gap-3">
+        <div className="lg:col-span-4 flex flex-col gap-2">
           {/* Escrow Locked */}
           <MetricCard
             label="Escrow Locked"
-            icon={<Shield size={14} className="text-primary/60" />}
+            icon={<Shield size={13} className="text-primary/60" />}
             value={
               escrowBalance
                 ? `${parseFloat(escrowBalance.formatted).toFixed(2)} ${escrowBalance.symbol}`
@@ -185,7 +185,7 @@ export default function Arena() {
           {/* Active Agents */}
           <MetricCard
             label="Active Agents"
-            icon={<Users size={14} className="text-success/70" />}
+            icon={<Users size={13} className="text-success/70" />}
             value={totalAgents.toString()}
             bar={{
               value: Math.min(totalAgents / 20, 1),
@@ -197,23 +197,23 @@ export default function Arena() {
 
           {/* Trust Health */}
           <div className={cn(
-            'bg-surface-container border p-4 flex flex-col gap-3',
+            'flex-1 bg-surface-container border p-3 flex flex-col gap-2 min-h-0',
             networkShock ? 'border-danger/40' : 'border-border',
           )}>
             <div className="flex items-center justify-between">
               <span className="text-[9px] font-mono uppercase tracking-widest text-on-surface-muted">
                 Mesh Stability
               </span>
-              <Activity size={13} className={trustHealthColor} />
+              <Activity size={12} className={trustHealthColor} />
             </div>
-            <p className={cn('text-2xl font-display font-bold', trustHealthColor)}>
+            <p className={cn('text-xl font-display font-bold', trustHealthColor)}>
               {trustHealth}
             </p>
             <p className="text-[9px] font-mono text-on-surface-dim leading-relaxed">
               {avgTrust > 0.8
-                ? 'All protocol handshakes verified. Zero drift detected in sub-layer consensus.'
+                ? 'All protocol handshakes verified. Zero drift in sub-layer consensus.'
                 : avgTrust > 0.5
-                  ? 'Some agents operating below threshold. Monitoring active.'
+                  ? 'Some agents below threshold. Monitoring active.'
                   : 'Multiple agents at risk. Slashing judge on standby.'}
             </p>
           </div>
@@ -221,11 +221,11 @@ export default function Arena() {
       </div>
 
       {/* Row 2: Live Events + Critical Agents */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:h-[248px]">
 
         {/* Live Events Feed — 5 cols */}
         <div className="lg:col-span-5 bg-surface-container border border-border flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
               <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-on-surface">
@@ -237,7 +237,7 @@ export default function Arena() {
             </span>
           </div>
 
-          <div className="flex-1 divide-y divide-border overflow-y-auto max-h-[300px]">
+          <div className="flex-1 divide-y divide-border overflow-y-auto" style={{ minHeight: 0 }}>
             {events.length === 0 ? (
               <p className="text-[10px] font-mono text-on-surface-dim text-center py-10 uppercase tracking-widest">
                 Waiting for 0G network events...
@@ -250,7 +250,7 @@ export default function Arena() {
 
         {/* Critical Agents — 7 cols */}
         <div className="lg:col-span-7 bg-surface-container border border-border flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
             <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-on-surface">
               Critical Agents
             </span>
@@ -297,9 +297,9 @@ export default function Arena() {
 
 function StatFooter({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="px-4 py-3">
+    <div className="px-3 py-2">
       <p className="text-[8px] font-mono uppercase tracking-widest text-on-surface-dim mb-0.5">{label}</p>
-      <p className={cn('text-sm font-mono font-bold uppercase', accent ? 'text-success' : 'text-on-surface')}>
+      <p className={cn('text-xs font-mono font-bold uppercase', accent ? 'text-success' : 'text-on-surface')}>
         {value}
       </p>
     </div>
@@ -315,14 +315,14 @@ function MetricCard({ label, icon, value, bar, shock }: {
 }) {
   return (
     <div className={cn(
-      'bg-surface-container border p-4 flex flex-col gap-3',
+      'bg-surface-container border p-3 flex flex-col gap-2',
       shock ? 'border-danger/40 animate-pulse' : 'border-border',
     )}>
       <div className="flex items-center justify-between">
         <span className="text-[9px] font-mono uppercase tracking-widest text-on-surface-muted">{label}</span>
         {icon}
       </div>
-      <p className="text-2xl font-mono font-bold text-on-surface tabular-nums">{value}</p>
+      <p className="text-xl font-mono font-bold text-on-surface tabular-nums">{value}</p>
       {/* Progress bar */}
       {bar.segments ? (
         <div className="flex gap-0.5 h-1.5">
@@ -363,7 +363,7 @@ function EventRow({ event }: { event: any }) {
         : 'Activity detected on 0G Network';
 
   return (
-    <div className={cn('px-4 py-3 flex gap-3', isSlash && 'bg-danger/5')}>
+    <div className={cn('px-3 py-2.5 flex gap-3', isSlash && 'bg-danger/5')}>
       <div className="mt-0.5 flex-shrink-0">
         <div className={cn(
           'w-1.5 h-1.5 rounded-full mt-1',
@@ -396,21 +396,21 @@ function CriticalAgentRow({ agent }: { agent: any }) {
       ? { label: 'STABLE',  cls: 'text-success border-success/30' }
       : { label: 'ACTIVE',  cls: 'text-primary border-primary/30' };
 
-  const shortId = `${agent.id.slice(0, 12)}...${agent.id.slice(-4)}`.toUpperCase();
+  const shortId = `${agent.id.slice(0, 14)}...${agent.id.slice(-4)}`.toUpperCase();
 
   return (
-    <div className="px-4 py-3 flex items-center gap-4 hover:bg-surface-low transition-colors">
+    <div className="px-4 py-2.5 flex items-center gap-4 hover:bg-surface-low transition-colors">
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-mono font-bold text-on-surface uppercase tracking-widest truncate mb-2">
+        <p className="text-[10px] font-mono font-bold text-on-surface uppercase tracking-widest truncate mb-1.5">
           {shortId}
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <span className="text-[8px] font-mono uppercase tracking-widest text-on-surface-dim whitespace-nowrap">
             Reliability Index
           </span>
-          <div className="flex-1 h-1 bg-surface-high min-w-[60px]">
+          <div className="flex-1 h-px bg-surface-high min-w-[40px]">
             <div
-              className={cn('h-1', agent.status === 'slashed' ? 'bg-danger' : 'bg-primary')}
+              className={cn('h-px', agent.status === 'slashed' ? 'bg-danger' : 'bg-primary')}
               style={{ width: `${agent.score * 100}%` }}
             />
           </div>

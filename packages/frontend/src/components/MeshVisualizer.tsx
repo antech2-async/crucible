@@ -21,54 +21,57 @@ const TIER_COLOR: Record<number, string> = {
   0: '#4a4540',
 };
 
-function deterministicPos(id: string, tier: number, score: number) {
-  let hash = 5381;
-  for (let i = 0; i < id.length; i++) {
-    hash = ((hash << 5) + hash + id.charCodeAt(i)) | 0;
-  }
-  const jitterX = ((Math.abs(hash) % 20) - 10);
-  const jitterY = ((Math.abs(hash >> 4) % 12) - 6);
+function idHash(id: string): number {
+  let h = 5381;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) + h + id.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
 
-  // X: trust score maps left→right (5–92)
-  const baseX = 5 + score * 87;
-  // Y: tier maps top→bottom (elite=top, low=bottom) with inversion
-  const tierBaseY: Record<number, number> = { 4: 12, 3: 32, 2: 55, 1: 75, 0: 88 };
-  const baseY = tierBaseY[tier] ?? 70;
+function gridPos(id: string, index: number, total: number) {
+  const cols = Math.max(2, Math.ceil(Math.sqrt(total)));
+  const rows = Math.ceil(total / cols);
+  const col = index % cols;
+  const row = Math.floor(index / cols);
+
+  const h = idHash(id);
+  const jX = ((h % 14) - 7);
+  const jY = (((h >> 5) % 10) - 5);
+
+  const cellW = 76 / cols;
+  const cellH = 76 / rows;
+  const bx = 12 + col * cellW + cellW / 2;
+  const by = 12 + row * cellH + cellH / 2;
 
   return {
-    x: Math.max(4, Math.min(96, baseX + jitterX)),
-    y: Math.max(4, Math.min(96, baseY + jitterY)),
+    x: Math.max(5, Math.min(95, bx + jX)),
+    y: Math.max(5, Math.min(95, by + jY)),
   };
 }
 
 export function MeshVisualizer({ agents }: MeshVisualizerProps) {
   const nodes = useMemo(
     () =>
-      agents.map((a) => ({
+      agents.map((a, i) => ({
         ...a,
-        pos: deterministicPos(a.id, a.tier, a.score),
+        pos: gridPos(a.id, i, agents.length),
         color: TIER_COLOR[a.tier] ?? TIER_COLOR[0],
-        label: `${a.id.slice(0, 8)}...${a.id.slice(-3)}`,
+        label: `${a.id.slice(0, 6)}...${a.id.slice(-3)}`,
       })),
     [agents],
   );
 
   const edges = useMemo(() => {
-    const result: { x1: number; y1: number; x2: number; y2: number; opacity: number }[] = [];
+    const result: { x1: number; y1: number; x2: number; y2: number }[] = [];
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
         const a = nodes[i];
         const b = nodes[j];
-        const sameTier = a.tier === b.tier && a.tier >= 2;
-        const proximate = Math.abs(a.score - b.score) < 0.12 && a.score > 0.55;
-        if (sameTier || proximate) {
-          result.push({
-            x1: a.pos.x,
-            y1: a.pos.y,
-            x2: b.pos.x,
-            y2: b.pos.y,
-            opacity: Math.min(a.score, b.score) * 0.4,
-          });
+        const dx = a.pos.x - b.pos.x;
+        const dy = a.pos.y - b.pos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        // Connect nearby nodes (within ~40 units) of same or adjacent tier
+        if (dist < 40 && Math.abs(a.tier - b.tier) <= 1) {
+          result.push({ x1: a.pos.x, y1: a.pos.y, x2: b.pos.x, y2: b.pos.y });
         }
       }
     }
@@ -78,7 +81,7 @@ export function MeshVisualizer({ agents }: MeshVisualizerProps) {
   if (agents.length === 0) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-dim animate-pulse">
+        <p className="text-[9px] font-mono uppercase tracking-widest text-on-surface-dim animate-pulse">
           Scanning 0G Network...
         </p>
       </div>
@@ -91,61 +94,45 @@ export function MeshVisualizer({ agents }: MeshVisualizerProps) {
       className="w-full h-full"
       preserveAspectRatio="xMidYMid meet"
     >
-      {/* Dot grid background */}
       <defs>
-        <pattern id="dotgrid" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
-          <circle cx="0.5" cy="0.5" r="0.3" fill="rgba(255,215,0,0.06)" />
+        <pattern id="dotgrid" x="0" y="0" width="5" height="5" patternUnits="userSpaceOnUse">
+          <circle cx="0.5" cy="0.5" r="0.25" fill="rgba(255,215,0,0.07)" />
         </pattern>
       </defs>
       <rect width="100" height="100" fill="url(#dotgrid)" />
 
-      {/* Connection lines */}
+      {/* Edges */}
       {edges.map((e, i) => (
         <line
           key={i}
-          x1={e.x1}
-          y1={e.y1}
-          x2={e.x2}
-          y2={e.y2}
-          stroke="rgba(255,215,0,0.15)"
-          strokeWidth="0.3"
-          opacity={e.opacity}
+          x1={e.x1} y1={e.y1}
+          x2={e.x2} y2={e.y2}
+          stroke="rgba(255,215,0,0.12)"
+          strokeWidth="0.25"
         />
       ))}
 
-      {/* Agent dots */}
+      {/* Nodes */}
       {nodes.map((node) => (
         <g key={node.id}>
-          {/* Pulse ring for elite agents */}
           {node.tier >= 3 && (
-            <circle
-              cx={node.pos.x}
-              cy={node.pos.y}
-              r="2.5"
-              fill="none"
-              stroke={node.color}
-              strokeWidth="0.4"
-              opacity="0.3"
-            >
-              <animate attributeName="r" values="2.5;4;2.5" dur="3s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.3;0;0.3" dur="3s" repeatCount="indefinite" />
+            <circle cx={node.pos.x} cy={node.pos.y} r="2" fill="none"
+              stroke={node.color} strokeWidth="0.3" opacity="0.25">
+              <animate attributeName="r" values="2;3.5;2" dur="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.25;0;0.25" dur="3s" repeatCount="indefinite" />
             </circle>
           )}
-          {/* Main dot */}
           <circle
-            cx={node.pos.x}
-            cy={node.pos.y}
-            r={node.status === 'slashed' ? '1.2' : '1.5'}
+            cx={node.pos.x} cy={node.pos.y}
+            r={node.tier >= 3 ? '1.2' : '0.9'}
             fill={node.status === 'slashed' ? '#F44336' : node.color}
-            opacity={node.status === 'slashed' ? 0.5 : 0.9}
+            opacity={node.status === 'slashed' ? 0.5 : 0.85}
           />
-          {/* Label */}
           <text
-            x={node.pos.x + 2.2}
-            y={node.pos.y - 2}
-            fontSize="2.2"
-            fill="rgba(138,128,112,0.7)"
-            fontFamily="var(--font-mono, monospace)"
+            x={node.pos.x + 1.8} y={node.pos.y - 1.5}
+            fontSize="2"
+            fill="rgba(138,128,112,0.65)"
+            fontFamily="var(--font-mono,monospace)"
           >
             {node.label}
           </text>
