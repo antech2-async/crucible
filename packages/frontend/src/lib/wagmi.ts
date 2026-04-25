@@ -1,4 +1,5 @@
 import { http, createConfig } from 'wagmi';
+import { injected } from 'wagmi/connectors';
 
 // Define 0G Galileo Testnet Chain
 export const ogGalileo = {
@@ -16,6 +17,7 @@ export const ogGalileo = {
 
 export const config = createConfig({
   chains: [ogGalileo],
+  connectors: [injected()],
   transports: {
     [ogGalileo.id]: http(),
   },
