@@ -20,39 +20,39 @@ interface TrustChartProps {
   }[];
 }
 
+const GOLD = '#FFD700';
+const GOLD_DIM = '#ffe792';
+
 export default function TrustChart({ data }: TrustChartProps) {
   return (
-    <div className="w-full h-[300px] glass rounded-3xl p-6 border border-white/5 relative overflow-hidden">
-      {/* Background Decor */}
-      <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/5 blur-[80px] rounded-full" />
-
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 italic">
+    <div className="w-full h-[280px] bg-surface-container border border-border p-5">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted">
           Bayesian Trajectory Analysis
         </h3>
         <div className="flex gap-4">
-          <LegendItem label="Trust Score" color="#3b82f6" />
-          <LegendItem label="Stake Multiplier" color="#6366f1" opacity={0.2} />
+          <LegendItem label="Trust Score"       color={GOLD}     />
+          <LegendItem label="Stake Multiplier"  color={GOLD_DIM} dim />
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height="85%">
+        <AreaChart data={data} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
           <defs>
             <linearGradient id="colorTrust" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+              <stop offset="5%"  stopColor={GOLD}     stopOpacity={0.25} />
+              <stop offset="95%" stopColor={GOLD}     stopOpacity={0}    />
             </linearGradient>
             <linearGradient id="colorMulti" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
-              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              <stop offset="5%"  stopColor={GOLD_DIM} stopOpacity={0.08} />
+              <stop offset="95%" stopColor={GOLD_DIM} stopOpacity={0}    />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+          <CartesianGrid strokeDasharray="2 4" stroke="#2a2825" vertical={false} />
           <XAxis dataKey="taskIndex" hide />
           <YAxis
             domain={[0, 100]}
-            tick={{ fill: '#4b5563', fontSize: 10, fontWeight: 'bold' }}
+            tick={{ fill: '#4a4540', fontSize: 9, fontFamily: 'var(--font-mono)' }}
             axisLine={false}
             tickLine={false}
           />
@@ -60,18 +60,18 @@ export default function TrustChart({ data }: TrustChartProps) {
           <Area
             type="monotone"
             dataKey="trustScore"
-            stroke="#3b82f6"
-            strokeWidth={3}
+            stroke={GOLD}
+            strokeWidth={2}
             fillOpacity={1}
             fill="url(#colorTrust)"
-            animationDuration={2000}
+            animationDuration={1500}
           />
           <Area
             type="monotone"
             dataKey="multiplier"
-            stroke="#6366f1"
+            stroke={GOLD_DIM}
             strokeWidth={1}
-            strokeDasharray="5 5"
+            strokeDasharray="4 4"
             fillOpacity={1}
             fill="url(#colorMulti)"
           />
@@ -81,19 +81,11 @@ export default function TrustChart({ data }: TrustChartProps) {
   );
 }
 
-function LegendItem({
-  label,
-  color,
-  opacity = 1,
-}: {
-  label: string;
-  color: string;
-  opacity?: number;
-}) {
+function LegendItem({ label, color, dim }: { label: string; color: string; dim?: boolean }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color, opacity }} />
-      <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
+    <div className="flex items-center gap-1.5">
+      <div className="w-2 h-px" style={{ backgroundColor: color, opacity: dim ? 0.5 : 1 }} />
+      <span className="text-[9px] font-mono uppercase tracking-widest text-on-surface-dim">{label}</span>
     </div>
   );
 }
@@ -101,19 +93,19 @@ function LegendItem({
 function CustomTooltip({ active, payload }: any) {
   if (active && payload && payload.length) {
     return (
-      <div className="glass-heavy border border-white/10 p-3 rounded-xl shadow-2xl">
-        <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">
-          Task Record #{payload[0].payload.taskIndex}
+      <div className="bg-surface-high border border-border p-3 text-xs font-mono">
+        <p className="text-[9px] uppercase tracking-widest text-primary mb-2">
+          Task #{payload[0].payload.taskIndex}
         </p>
         <div className="space-y-1">
-          <p className="text-xl font-bold flex items-center justify-between gap-4">
-            <span className="text-gray-400 text-[10px] uppercase font-mono">Trust</span>
-            {payload[0].value.toFixed(1)}%
-          </p>
-          <p className="text-xs font-bold text-gray-500 flex items-center justify-between gap-4">
-            <span className="text-[10px] uppercase font-mono italic">Multiplier</span>
-            {payload[1].value.toFixed(2)}x Stake
-          </p>
+          <div className="flex items-center justify-between gap-6">
+            <span className="text-on-surface-muted uppercase text-[9px]">Trust</span>
+            <span className="font-bold text-on-surface">{payload[0].value.toFixed(1)}%</span>
+          </div>
+          <div className="flex items-center justify-between gap-6">
+            <span className="text-on-surface-dim uppercase text-[9px]">Multiplier</span>
+            <span className="text-on-surface-muted">{payload[1].value.toFixed(2)}x</span>
+          </div>
         </div>
       </div>
     );
