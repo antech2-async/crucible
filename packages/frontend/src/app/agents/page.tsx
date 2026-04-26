@@ -4,13 +4,7 @@
 import React, { useState } from 'react';
 import { Trophy } from 'lucide-react';
 import AgentCard from '@/components/AgentCard';
-
-const TIER_METRICS = [
-  { label: 'Elite', count: 2, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-  { label: 'High Trust', count: 5, color: 'text-green-500', bg: 'bg-green-500/10' },
-  { label: 'Stable', count: 12, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-];
-
+import { SectionHeader, Surface } from '@/components/ui';
 import { useQuery } from '@tanstack/react-query';
 
 export default function AgentsPage() {
@@ -25,6 +19,12 @@ export default function AgentsPage() {
     refetchInterval: 10000,
   });
 
+  const tierMetrics = [
+    { label: 'Elite',      count: agents.filter((a: any) => a.tier >= 3).length, colorClass: 'text-tier-elite', borderClass: 'border-tier-elite/30' },
+    { label: 'High Trust', count: agents.filter((a: any) => a.tier === 2).length, colorClass: 'text-tier-high',  borderClass: 'border-tier-high/30'  },
+    { label: 'Stable',     count: agents.filter((a: any) => a.tier === 1).length, colorClass: 'text-tier-mid',   borderClass: 'border-tier-mid/30'    },
+  ];
+
   const filteredAgents = agents.filter((a: any) => {
     if (filter === 'all') return true;
     if (filter === 'elite') return a.tier >= 3;
@@ -32,44 +32,43 @@ export default function AgentsPage() {
     return true;
   });
 
-  const tierMetrics = [
-    { label: 'Elite', count: agents.filter((a: any) => a.tier >= 3).length, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-    { label: 'High Trust', count: agents.filter((a: any) => a.tier === 2).length, color: 'text-green-500', bg: 'bg-green-500/10' },
-    { label: 'Stable', count: agents.filter((a: any) => a.tier === 1).length, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  ];
-
   return (
     <div className="w-full">
-      <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+      <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h1 className="text-4xl font-black italic tracking-tighter uppercase mb-2">
-            Agent <span className="text-blue-500">Registry</span>
+          <h1 className="text-2xl font-display font-bold uppercase tracking-widest text-on-surface mb-1">
+            Agent <span className="text-primary">Registry</span>
           </h1>
-          <p className="text-xs font-mono text-gray-500 tracking-widest uppercase mb-6">
+          <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted mb-5">
             Cryptographic Reputation Leaderboard
           </p>
 
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-3">
             {tierMetrics.map((m) => (
               <div
                 key={m.label}
-                className={`px-4 py-2 rounded-xl ${m.bg} border border-white/5 flex items-center gap-3`}
+                className={`px-4 py-2 bg-surface-container border ${m.borderClass} flex items-center gap-3`}
               >
-                <span className={`text-[10px] font-black uppercase tracking-widest ${m.color}`}>
+                <span className={`text-[10px] font-mono uppercase tracking-widest ${m.colorClass}`}>
                   {m.label}
                 </span>
-                <span className="text-lg font-bold">{m.count}</span>
+                <span className="text-base font-mono font-bold text-on-surface">{m.count}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
+        {/* Filter tabs */}
+        <div className="flex bg-surface-low border border-border p-px">
           {['all', 'elite', 'active'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
+              className={`px-5 py-2 text-[10px] font-mono uppercase tracking-widest transition-colors ${
+                filter === f
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-on-surface-muted hover:text-on-surface'
+              }`}
             >
               {f}
             </button>
@@ -79,64 +78,70 @@ export default function AgentsPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="w-8 h-8 border-2 border-border border-t-primary animate-spin" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {filteredAgents.map((agent: any) => (
             <AgentCard key={agent.id} agent={agent} />
           ))}
           {filteredAgents.length === 0 && (
-            <div className="col-span-full py-20 glass rounded-2xl text-center border border-white/5">
-              <p className="text-gray-500 font-mono text-xs uppercase tracking-widest">No agents found matching filter</p>
+            <div className="col-span-full py-16 bg-surface-container border border-border text-center">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted">
+                No agents found matching filter
+              </p>
             </div>
           )}
         </div>
       )}
 
-      <div className="mt-12 glass rounded-2xl p-8 border border-white/5">
-        <div className="flex items-center gap-3 mb-6">
-          <Trophy className="text-yellow-500" size={24} />
-          <h2 className="text-xl font-bold uppercase italic tracking-tight">Leaderboard Ranking</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+      {/* Leaderboard */}
+      <Surface level="container" className="mt-10 p-6">
+        <SectionHeader
+          title="Leaderboard Ranking"
+          action={<Trophy className="text-primary" size={18} />}
+          className="mb-0"
+        />
+        <div className="overflow-x-auto mt-5">
+          <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-white/5 text-gray-500 font-mono text-[10px] uppercase tracking-widest">
-                <th className="pb-4 pt-4">Rank</th>
-                <th className="pb-4 pt-4">Agent Identity</th>
-                <th className="pb-4 pt-4 text-right">Trust Score</th>
-                <th className="pb-4 pt-4 text-right">Yield Multiplier</th>
+              <tr className="border-b border-border text-[10px] font-mono uppercase tracking-widest text-on-surface-muted">
+                <th className="pb-3 pt-2">Rank</th>
+                <th className="pb-3 pt-2">Agent Identity</th>
+                <th className="pb-3 pt-2 text-right">Trust Score</th>
+                <th className="pb-3 pt-2 text-right">Yield Multiplier</th>
               </tr>
             </thead>
-            <tbody>
-              {agents.sort((a: any, b: any) => b.score - a.score).map((agent: any, i: number) => (
+            <tbody className="divide-y divide-border">
+              {[...agents].sort((a: any, b: any) => b.score - a.score).map((agent: any, i: number) => (
                 <LeaderboardRow
                   key={agent.id}
                   rank={i + 1}
                   id={agent.id}
                   score={`${(agent.score * 100).toFixed(1)}%`}
                   multi={`${(1 + agent.score).toFixed(2)}x Stake`}
-                  color={i === 0 ? "text-yellow-500" : i === 1 ? "text-yellow-400" : "text-yellow-200"}
+                  isTop={i < 3}
                 />
               ))}
             </tbody>
           </table>
         </div>
-      </div>
+      </Surface>
     </div>
   );
 }
 
-function LeaderboardRow({ rank, id, score, multi, color }: any) {
+function LeaderboardRow({ rank, id, score, multi, isTop }: { rank: number; id: string; score: string; multi: string; isTop: boolean }) {
   return (
-    <tr className="border-b border-white/5 group hover:bg-white/[0.02] transition-colors">
-      <td className="py-4 font-black italic text-gray-500">{rank}</td>
-      <td className="py-4 font-mono font-bold group-hover:text-blue-400 transition-colors uppercase tracking-widest break-all">
+    <tr className="group hover:bg-surface-low transition-colors">
+      <td className="py-3.5 font-mono text-on-surface-dim">{rank}</td>
+      <td className="py-3.5 font-mono text-xs uppercase tracking-widest group-hover:text-primary transition-colors break-all">
         {id}
       </td>
-      <td className="py-4 text-right font-black text-lg">{score}</td>
-      <td className={`py-4 text-right font-bold text-xs uppercase tracking-widest ${color}`}>
+      <td className={`py-3.5 text-right font-mono font-bold ${isTop ? 'text-primary' : 'text-on-surface'}`}>
+        {score}
+      </td>
+      <td className={`py-3.5 text-right text-[10px] font-mono uppercase tracking-widest ${isTop ? 'text-primary/70' : 'text-on-surface-muted'}`}>
         {multi}
       </td>
     </tr>

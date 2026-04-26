@@ -2,13 +2,14 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Shield, Users, Zap, Activity, AlertTriangle } from 'lucide-react';
 import { useReadContract, useBalance, useWatchContractEvent } from 'wagmi';
 import { AGENT_REGISTRY_ABI, TASK_ESCROW_ABI, CONTRACT_ADDRESSES } from '@crucible/shared';
 import { cn } from '@/lib/utils';
 import AgentCard from './AgentCard';
 import TaskCard from './TaskCard';
+import { SectionHeader } from '@/components/ui';
 
 export default function Arena() {
   const [agents, setAgents] = useState<any[]>([]);
@@ -16,7 +17,6 @@ export default function Arena() {
   const [networkShock, setNetworkShock] = useState(false);
   const [adminMode, setAdminMode] = useState(false);
 
-  // 1. Fetch Summary Metrics
   const { data: agentList } = useReadContract({
     address: CONTRACT_ADDRESSES.AGENT_REGISTRY as `0x${string}`,
     abi: AGENT_REGISTRY_ABI,
@@ -35,20 +35,14 @@ export default function Arena() {
     functionName: 'taskCount',
   });
 
-  // 2. Watch for Live Network Activity
   useWatchContractEvent({
     address: CONTRACT_ADDRESSES.TASK_ESCROW as `0x${string}`,
     abi: TASK_ESCROW_ABI,
     onLogs(logs: any) {
       const log = logs[0];
       setEvents((prev) =>
-        [
-          { type: log.eventName === 'AgentSlashed' ? 'SLASH' : log.eventName, raw: log },
-          ...prev,
-        ].slice(0, 10),
+        [{ type: log.eventName === 'AgentSlashed' ? 'SLASH' : log.eventName, raw: log }, ...prev].slice(0, 10),
       );
-
-      // Gold Plating: Trigger Network Shock on Slashing
       if (log.eventName === 'AgentSlashed') {
         setNetworkShock(true);
         setTimeout(() => setNetworkShock(false), 3000);
@@ -67,51 +61,36 @@ export default function Arena() {
     },
   });
 
-  const { data: agentAddresses } = useReadContract({
-    address: CONTRACT_ADDRESSES.AGENT_REGISTRY as `0x${string}`,
-    abi: AGENT_REGISTRY_ABI,
-    functionName: 'getAgentList',
-    // In a production app, we would use a more sophisticated multicall pattern
-  });
-
-  // 3. Populate Agent List with Real Telemetry
   useEffect(() => {
     async function fetchAgents() {
       try {
-        const response = await fetch('/api/agents');
-        if (!response.ok) throw new Error('Failed to fetch agents');
-        const data = await response.json();
-        setAgents(data);
+        const res = await fetch('/api/agents');
+        if (!res.ok) throw new Error('Failed to fetch agents');
+        setAgents(await res.json());
       } catch (err) {
         console.error('Failed to sync agent telemetry', err);
       }
     }
-    
     fetchAgents();
-    const interval = setInterval(fetchAgents, 10000); // Polling every 10s
+    const interval = setInterval(fetchAgents, 10000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div
-      className={cn(
-        'w-full max-w-7xl mx-auto mt-4 lg:mt-12 grid grid-cols-1 lg:grid-cols-12 gap-8 transition-colors duration-300',
-        networkShock ? 'bg-red-500/5 shadow-[inset_0_0_100px_rgba(239,68,68,0.1)]' : '',
-      )}
-    >
-      {/* Network Alert Banner */}
+    <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Network shock banner */}
       <AnimatePresence>
         {networkShock && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="md:col-span-12 overflow-hidden"
+            className="lg:col-span-12 overflow-hidden"
           >
-            <div className="p-3 bg-red-600/20 border border-red-600/30 rounded-xl flex items-center justify-center gap-3 animate-pulse border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-              <AlertTriangle className="text-red-500" size={18} />
-              <span className="text-[11px] font-black uppercase text-red-500 tracking-[0.3em] font-mono italic">
-                Emergency Alert: Agent Defection Detected • Initializing Slashing Judge
+            <div className="p-3 bg-danger/10 border border-danger/30 flex items-center justify-center gap-3 animate-pulse">
+              <AlertTriangle className="text-danger" size={16} />
+              <span className="text-[10px] font-mono uppercase tracking-widest text-danger">
+                Emergency Alert: Agent Defection Detected · Initializing Slashing Judge
               </span>
             </div>
           </motion.div>
@@ -119,122 +98,93 @@ export default function Arena() {
       </AnimatePresence>
 
       {/* Metrics Row */}
-      <motion.div
-        initial="hidden"
-        animate="show"
-        variants={{
-          hidden: { opacity: 0 },
-          show: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1 },
-          },
-        }}
-        className="lg:col-span-12 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4"
-      >
+      <div className="lg:col-span-12 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
         <MetricCard
           title="Value Secured"
           value={`${escrowBalance ? Number(escrowBalance.formatted).toFixed(2) : '0.00'} ${escrowBalance?.symbol || '0G'}`}
-          icon={<Shield className="text-blue-400" />}
-          trend="Live"
+          icon={<Shield size={16} className="text-primary/60" />}
+          live
         />
         <MetricCard
           title="Active Agents"
           value={totalAgents?.toString() || '0'}
-          icon={<Users className="text-emerald-400" />}
+          icon={<Users size={16} className="text-success/70" />}
           shock={networkShock}
         />
         <MetricCard
           title="Tasks Pipeline"
           value={taskCount?.toString() || '0'}
-          icon={<Zap className="text-amber-400" />}
+          icon={<Zap size={16} className="text-primary/60" />}
         />
         <MetricCard
           title="Network Health"
           value={networkShock ? '92.4%' : '100%'}
-          icon={<Activity className={networkShock ? 'text-red-500' : 'text-fuchsia-400'} />}
+          icon={<Activity size={16} className={networkShock ? 'text-danger' : 'text-success/70'} />}
           shock={networkShock}
         />
-      </motion.div>
+      </div>
 
       {/* Main Agent Grid */}
       <div className="lg:col-span-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Users size={20} /> Active Agent Network
-          </h2>
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-gray-400 font-mono tracking-tighter uppercase italic">
-              TEE Verified Nodes
-            </span>
-            <button 
+        <SectionHeader
+          title="Active Agent Network"
+          subtitle="TEE Verified Nodes"
+          action={
+            <button
               onClick={() => setAdminMode(!adminMode)}
               className={cn(
-                "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all",
-                adminMode ? "bg-red-500/20 border-red-500/50 text-red-500" : "bg-white/5 border-white/10 text-gray-500 hover:text-white"
+                'px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border transition-colors',
+                adminMode
+                  ? 'bg-danger/10 border-danger/30 text-danger'
+                  : 'bg-transparent border-border text-on-surface-muted hover:text-on-surface',
               )}
             >
-              {adminMode ? "Exit Admin" : "Admin Portal"}
+              {adminMode ? 'Exit Admin' : 'Admin Portal'}
             </button>
-          </div>
-        </div>
+          }
+        />
 
         {adminMode ? (
-          <div className="glass rounded-3xl p-12 border border-red-500/20 text-center">
-            <Shield className="text-red-500 mx-auto mb-4" size={48} />
-            <h3 className="text-xl font-bold text-white mb-2 uppercase italic tracking-tighter">Dispute Resolution Protocol</h3>
-            <p className="text-sm text-gray-500 mb-8 max-w-md mx-auto">Moderator access enabled. View and resolve contested outcomes from the 0G network.</p>
-            <div className="bg-white/5 rounded-xl p-4 text-xs font-mono text-gray-400 italic">No pending disputes found in active epoch.</div>
+          <div className="bg-surface-container border border-danger/20 p-10 text-center">
+            <Shield className="text-danger mx-auto mb-4" size={32} />
+            <h3 className="text-sm font-display font-bold uppercase tracking-widest text-on-surface mb-2">
+              Dispute Resolution Protocol
+            </h3>
+            <p className="text-xs font-mono text-on-surface-muted mb-6 max-w-md mx-auto">
+              Moderator access enabled. View and resolve contested outcomes.
+            </p>
+            <div className="bg-surface-low border border-border p-4 text-xs font-mono text-on-surface-dim">
+              No pending disputes found in active epoch.
+            </div>
+          </div>
+        ) : agents.length === 0 ? (
+          <div className="py-20 bg-surface-container border border-border text-center">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted animate-pulse">
+              Scanning 0G Network
+            </p>
+            <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-primary/60 mt-3">
+              <div className="w-1 h-1 bg-primary animate-pulse" />
+              Synchronizing INFT Signatures...
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {agents.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="col-span-full py-20 text-center glass rounded-2xl border border-white/5 relative overflow-hidden group"
-            >
-              {/* Radar Background Animation */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
-                <div className="w-[400px] h-[400px] rounded-full border border-blue-500/30 relative">
-                  <div className="absolute inset-0 w-full h-full rounded-full border border-blue-500/10 animate-ping" />
-                  <div className="absolute top-1/2 left-1/2 w-full h-[1px] bg-gradient-to-r from-transparent to-blue-500 origin-left animate-radar" />
-                  {/* Concentric Circles */}
-                  <div className="absolute inset-[25%] rounded-full border border-blue-500/10" />
-                  <div className="absolute inset-[50%] rounded-full border border-blue-500/10" />
-                  <div className="absolute inset-[75%] rounded-full border border-blue-500/10" />
-                </div>
-              </div>
-
-              <div className="relative z-10">
-                <p className="text-gray-400 font-black uppercase text-sm tracking-[0.4em] mb-2 animate-pulse">
-                  Scanning 0G Network
-                </p>
-                <div className="flex items-center justify-center gap-2 text-[10px] text-blue-400 font-mono italic uppercase">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                  Synchronizing INFT Signatures...
-                </div>
-              </div>
-            </motion.div>
-          ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <AnimatePresence>
               {agents.map((agent, i) => (
                 <AgentCard key={agent.id || i} agent={agent} />
               ))}
             </AnimatePresence>
-          )}
           </div>
         )}
       </div>
 
       {/* Live Activity Feed */}
-      <div className="lg:col-span-4 space-y-8">
+      <div className="lg:col-span-4 space-y-6">
         <div>
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <Activity size={20} /> Live Verification
-          </h2>
-          <div className="glass rounded-2xl p-4 space-y-4 max-h-[400px] overflow-y-auto">
+          <SectionHeader title="Live Verification" />
+          <div className="bg-surface-container border border-border divide-y divide-border max-h-[360px] overflow-y-auto">
             {events.length === 0 ? (
-              <p className="text-xs text-center text-gray-500 py-8 italic">
+              <p className="text-[10px] font-mono text-center text-on-surface-dim py-8 uppercase tracking-widest">
                 Waiting for 0G network events...
               </p>
             ) : (
@@ -244,10 +194,9 @@ export default function Arena() {
                   type={ev.type}
                   msg={
                     ev.type === 'TaskPosted'
-                      ? `New task #${ev.raw.args?.taskId?.toString()} posted by ${ev.raw.args?.poster?.slice(0, 6)}`
-                      : `Activity on 0G Network`
+                      ? `Task #${ev.raw.args?.taskId?.toString()} posted by ${ev.raw.args?.poster?.slice(0, 6)}`
+                      : 'Activity on 0G Network'
                   }
-                  time="Just now"
                 />
               ))
             )}
@@ -255,9 +204,7 @@ export default function Arena() {
         </div>
 
         <div>
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <Zap size={20} /> Open Tasks
-          </h2>
+          <SectionHeader title="Open Tasks" />
           <TaskCard />
         </div>
       </div>
@@ -265,63 +212,42 @@ export default function Arena() {
   );
 }
 
-function MetricCard({ title, value, icon, trend, shock }: any) {
+function MetricCard({ title, value, icon, live, shock }: any) {
   return (
-    <motion.div
-      variants={{
-        hidden: { opacity: 0, y: 10 },
-        show: { opacity: 1, y: 0 },
-      }}
-      whileHover={{ scale: 1.02 }}
+    <div
       className={cn(
-        'glass rounded-2xl p-5 border border-white/5 relative overflow-hidden',
-        shock
-          ? 'animate-pulse border-red-500/50 bg-red-500/5 shadow-[0_0_20px_rgba(239,68,68,0.1)]'
-          : 'hover:border-white/10',
+        'bg-surface-container border p-4 relative',
+        shock ? 'border-danger/40 animate-pulse' : 'border-border',
       )}
     >
-      <div className="flex justify-between items-start mb-3 relative z-10">
-        <div className="p-2 bg-white/5 rounded-xl border border-white/10 shadow-inner">{icon}</div>
-        {trend && (
-          <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 shadow-sm animate-pulse-glow uppercase tracking-wider">
-            {trend}
+      <div className="flex justify-between items-start mb-3">
+        <div className="p-1.5 bg-surface-low border border-border">{icon}</div>
+        {live && (
+          <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 bg-success/5 text-success border border-success/20 animate-pulse">
+            Live
           </span>
         )}
       </div>
-      <p className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-bold mb-1 relative z-10">
-        {title}
-      </p>
-      <p className="text-2xl font-black font-mono tracking-tighter relative z-10">{value}</p>
-
-      {/* Decorative background grid effect */}
-      <div
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)',
-          backgroundSize: '12px 12px',
-        }}
-      />
-    </motion.div>
+      <p className="text-[9px] font-mono uppercase tracking-widest text-on-surface-muted mb-1">{title}</p>
+      <p className="text-xl font-mono font-bold text-on-surface tabular-nums">{value}</p>
+    </div>
   );
 }
 
-function EventRow({ type, msg, time }: any) {
+function EventRow({ type, msg }: { type: string; msg: string }) {
   const isSlash = type === 'SLASH';
   return (
-    <div
-      className={`p-3 rounded-xl text-sm flex gap-3 ${isSlash ? 'bg-red-500/10' : 'bg-white/5'}`}
-    >
-      <div className="mt-1">
+    <div className={`p-3 flex gap-3 text-xs ${isSlash ? 'bg-danger/5' : ''}`}>
+      <div className="mt-0.5 flex-shrink-0">
         {isSlash ? (
-          <AlertTriangle size={14} className="text-red-500" />
+          <AlertTriangle size={12} className="text-danger" />
         ) : (
-          <Shield size={14} className="text-blue-500" />
+          <Shield size={12} className="text-primary/60" />
         )}
       </div>
-      <div className="flex-1">
-        <p className="text-gray-200">{msg}</p>
-        <span className="text-[10px] text-gray-500">{time}</span>
-      </div>
+      <p className={`font-mono text-[10px] leading-relaxed ${isSlash ? 'text-danger' : 'text-on-surface-muted'}`}>
+        {msg}
+      </p>
     </div>
   );
 }
