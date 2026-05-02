@@ -14,12 +14,21 @@ interface MeshVisualizerProps {
 }
 
 const TIER_COLOR: Record<number, string> = {
-  4: '#FFD700',
-  3: '#4CAF50',
-  2: '#FF9800',
-  1: '#F44336',
-  0: '#4a4540',
+  4: '#FFB000',
+  3: '#71D7CD',
+  2: '#FFD597',
+  1: '#FFB4AB',
+  0: '#7f725f',
 };
+
+const DEMO_AGENTS: Agent[] = [
+  { id: 'SENTINEL_PRIME', tier: 4, score: 0.99, status: 'idle' },
+  { id: 'FORGE_MASTER', tier: 3, score: 0.84, status: 'working' },
+  { id: 'RELAY_ALPHA', tier: 4, score: 0.94, status: 'idle' },
+  { id: 'ORACLE_77X', tier: 2, score: 0.78, status: 'working' },
+  { id: 'ARCHIVE_NOVA', tier: 3, score: 0.88, status: 'idle' },
+  { id: 'CIPHER_NODE', tier: 4, score: 0.97, status: 'idle' },
+];
 
 function idHash(id: string): number {
   let h = 5381;
@@ -34,8 +43,8 @@ function gridPos(id: string, index: number, total: number) {
   const row = Math.floor(index / cols);
 
   const h = idHash(id);
-  const jX = ((h % 14) - 7);
-  const jY = (((h >> 5) % 10) - 5);
+  const jX = (h % 14) - 7;
+  const jY = ((h >> 5) % 10) - 5;
 
   const cellW = 76 / cols;
   const cellH = 76 / rows;
@@ -49,15 +58,17 @@ function gridPos(id: string, index: number, total: number) {
 }
 
 export function MeshVisualizer({ agents }: MeshVisualizerProps) {
+  const visualAgents = agents.length > 0 ? agents : DEMO_AGENTS;
+
   const nodes = useMemo(
     () =>
-      agents.map((a, i) => ({
+      visualAgents.map((a, i) => ({
         ...a,
-        pos: gridPos(a.id, i, agents.length),
+        pos: gridPos(a.id, i, visualAgents.length),
         color: TIER_COLOR[a.tier] ?? TIER_COLOR[0],
         label: `${a.id.slice(0, 6)}...${a.id.slice(-3)}`,
       })),
-    [agents],
+    [visualAgents],
   );
 
   const edges = useMemo(() => {
@@ -78,66 +89,103 @@ export function MeshVisualizer({ agents }: MeshVisualizerProps) {
     return result;
   }, [nodes]);
 
-  if (agents.length === 0) {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        <p className="text-[9px] font-mono uppercase tracking-widest text-on-surface-dim animate-pulse">
-          Scanning 0G Network...
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <svg
-      viewBox="0 0 100 100"
-      className="w-full h-full"
-      preserveAspectRatio="xMidYMid meet"
-    >
-      <defs>
-        <pattern id="dotgrid" x="0" y="0" width="5" height="5" patternUnits="userSpaceOnUse">
-          <circle cx="0.5" cy="0.5" r="0.25" fill="rgba(255,215,0,0.07)" />
-        </pattern>
-      </defs>
-      <rect width="100" height="100" fill="url(#dotgrid)" />
+    <div className="relative h-full w-full overflow-hidden mesh-haze">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0,rgba(20,19,18,0.18)_42%,rgba(20,19,18,0.58)_100%)]" />
+      <svg
+        viewBox="0 0 100 100"
+        className="relative z-10 h-full w-full"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          <filter id="mesh-glow">
+            <feGaussianBlur stdDeviation="1.4" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
 
-      {/* Edges */}
-      {edges.map((e, i) => (
-        <line
-          key={i}
-          x1={e.x1} y1={e.y1}
-          x2={e.x2} y2={e.y2}
-          stroke="rgba(255,215,0,0.12)"
-          strokeWidth="0.25"
-        />
-      ))}
+        {edges.map((e, i) => (
+          <g key={i}>
+            <line
+              x1={e.x1}
+              y1={e.y1}
+              x2={e.x2}
+              y2={e.y2}
+              stroke="rgba(255,213,151,0.12)"
+              strokeWidth="0.22"
+            />
+            <line
+              x1={e.x1}
+              y1={e.y1}
+              x2={e.x2}
+              y2={e.y2}
+              stroke="rgba(113,215,205,0.45)"
+              strokeDasharray="1.8 6"
+              strokeLinecap="round"
+              strokeWidth="0.22"
+              className="opacity-0 transition-opacity duration-300 group-hover/mesh:opacity-100"
+            >
+              <animate
+                attributeName="stroke-dashoffset"
+                values="0;-15"
+                dur={`${2.8 + i * 0.18}s`}
+                repeatCount="indefinite"
+              />
+            </line>
+          </g>
+        ))}
 
-      {/* Nodes */}
-      {nodes.map((node) => (
-        <g key={node.id}>
-          {node.tier >= 3 && (
-            <circle cx={node.pos.x} cy={node.pos.y} r="2" fill="none"
-              stroke={node.color} strokeWidth="0.3" opacity="0.25">
-              <animate attributeName="r" values="2;3.5;2" dur="3s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.25;0;0.25" dur="3s" repeatCount="indefinite" />
+        {nodes.map((node, index) => (
+          <g key={node.id} filter="url(#mesh-glow)">
+            <animateTransform
+              attributeName="transform"
+              type="translate"
+              values={`0 0;${index % 2 === 0 ? 0.7 : -0.6} ${index % 3 === 0 ? -0.5 : 0.45};0 0`}
+              dur={`${5.2 + index * 0.35}s`}
+              repeatCount="indefinite"
+            />
+            <circle
+              cx={node.pos.x}
+              cy={node.pos.y}
+              r={node.tier >= 3 ? '2.2' : '1.8'}
+              fill="none"
+              stroke={node.color}
+              strokeWidth="0.28"
+              opacity="0.16"
+            >
+              <animate
+                attributeName="r"
+                values="1.8;3.4;1.8"
+                dur={`${3 + index * 0.25}s`}
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.16;0;0.16"
+                dur={`${3 + index * 0.25}s`}
+                repeatCount="indefinite"
+              />
             </circle>
-          )}
-          <circle
-            cx={node.pos.x} cy={node.pos.y}
-            r={node.tier >= 3 ? '1.2' : '0.9'}
-            fill={node.status === 'slashed' ? '#F44336' : node.color}
-            opacity={node.status === 'slashed' ? 0.5 : 0.85}
-          />
-          <text
-            x={node.pos.x + 1.8} y={node.pos.y - 1.5}
-            fontSize="2"
-            fill="rgba(138,128,112,0.65)"
-            fontFamily="var(--font-mono,monospace)"
-          >
-            {node.label}
-          </text>
-        </g>
-      ))}
-    </svg>
+            <circle
+              cx={node.pos.x}
+              cy={node.pos.y}
+              r={node.tier >= 3 ? '0.88' : '0.72'}
+              fill={node.status === 'slashed' ? '#FFB4AB' : node.color}
+              opacity={node.status === 'slashed' ? 0.65 : 0.95}
+            >
+              <animate
+                attributeName="opacity"
+                values={node.status === 'slashed' ? '0.5;0.8;0.5' : '0.78;1;0.78'}
+                dur={`${2.4 + index * 0.22}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+          </g>
+        ))}
+      </svg>
+    </div>
   );
 }

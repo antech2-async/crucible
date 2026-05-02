@@ -12,7 +12,7 @@ export function ConnectWallet() {
     return (
       <button
         onClick={() => disconnect()}
-        className="px-4 py-2 text-[10px] font-mono uppercase tracking-widest border border-primary/50 text-primary hover:bg-primary/10 transition-colors"
+        className="rounded-lg border border-primary/40 px-4 py-2 font-display text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
       >
         {address.slice(0, 6)}...{address.slice(-4)}
       </button>
@@ -22,7 +22,7 @@ export function ConnectWallet() {
   return (
     <button
       onClick={() => connectors[0] && connect({ connector: connectors[0] })}
-      className="px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest bg-primary text-on-primary hover:bg-primary-muted transition-colors"
+      className="rounded-lg bg-primary px-4 py-2 font-display text-sm font-bold text-on-primary shadow-[0_0_18px_rgba(255,176,0,0.12)] transition-colors hover:bg-primary-muted"
     >
       Connect Wallet
     </button>

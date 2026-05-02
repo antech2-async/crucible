@@ -3,30 +3,160 @@
 @tailwind utilities;
 
 :root {
-  --surface: #0e0e0e;
-  --surface-low: #131313;
-  --surface-container: #1a1919;
-  --surface-high: #222120;
-  --primary: #FFD700;
-  --primary-muted: #ffe792;
-  --on-primary: #0e0e0e;
-  --on-surface: #f0ece0;
-  --on-surface-muted: #8a8070;
-  --on-surface-dim: #4a4540;
-  --tier-elite: #FFD700;
-  --tier-high: #4CAF50;
-  --tier-mid: #FF9800;
-  --tier-low: #F44336;
-  --border: #2a2825;
-  --border-strong: #3d3830;
-  --danger: #F44336;
-  --success: #4CAF50;
-  --warning: #FF9800;
+  --surface: 20 19 18;
+  --surface-low: 28 27 26;
+  --surface-container: 32 31 30;
+  --surface-high: 43 42 41;
+  --surface-highest: 54 52 51;
+  --primary: 255 176 0;
+  --primary-muted: 255 213 151;
+  --secondary: 113 215 205;
+  --on-primary: 40 24 0;
+  --on-surface: 230 226 223;
+  --on-surface-muted: 215 196 172;
+  --on-surface-dim: 127 114 95;
+  --tier-elite: 255 176 0;
+  --tier-high: 113 215 205;
+  --tier-mid: 255 213 151;
+  --tier-low: 255 180 171;
+  --border: 59 51 41;
+  --border-strong: 82 69 51;
+  --danger: 255 180 171;
+  --success: 113 215 205;
+  --warning: 255 176 0;
 }
 
 @layer base {
   body {
-    background-color: var(--surface);
-    color: var(--on-surface);
+    background-color: rgb(var(--surface));
+    color: rgb(var(--on-surface));
+  }
+}
+
+@layer utilities {
+  .mesh-haze {
+    position: relative;
+    background:
+      radial-gradient(circle at 50% 46%, rgba(255, 176, 0, 0.11), transparent 42%),
+      radial-gradient(circle at 25% 70%, rgba(113, 215, 205, 0.08), transparent 28%),
+      linear-gradient(135deg, rgba(255, 176, 0, 0.04), transparent 45%);
+  }
+
+  .mesh-haze::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 42%,
+      rgba(113, 215, 205, 0.1) 49%,
+      rgba(255, 176, 0, 0.08) 52%,
+      transparent 60%,
+      transparent 100%
+    );
+    opacity: 0.2;
+    transform: translateX(-45%);
+    animation: mesh-sweep 7s linear infinite;
+  }
+
+  .mesh-haze::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 42% 52%, rgba(255, 176, 0, 0.08), transparent 18%),
+      radial-gradient(circle at 62% 35%, rgba(113, 215, 205, 0.07), transparent 14%);
+    opacity: 0.45;
+    transition: opacity 280ms ease;
+  }
+
+  .mesh-haze:hover::before {
+    opacity: 0.48;
+    animation-duration: 3.8s;
+  }
+
+  .mesh-haze:hover::after {
+    opacity: 0.78;
+  }
+
+  .panel-interactive {
+    position: relative;
+    overflow: hidden;
+    transition:
+      border-color 220ms ease,
+      box-shadow 220ms ease,
+      transform 220ms ease,
+      background-color 220ms ease;
+  }
+
+  .panel-interactive::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      120deg,
+      transparent 0%,
+      rgba(255, 213, 151, 0.07) 45%,
+      transparent 62%
+    );
+    opacity: 0;
+    transform: translateX(-120%);
+    transition:
+      opacity 220ms ease,
+      transform 520ms ease;
+  }
+
+  .panel-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 42px -30px rgba(255, 213, 151, 0.32);
+  }
+
+  .panel-interactive:hover::after {
+    opacity: 1;
+    transform: translateX(120%);
+  }
+
+  .readout-pulse {
+    animation: readout-pulse 2.6s ease-in-out infinite;
+  }
+
+  .bar-live {
+    background-size: 200% 100%;
+    animation: bar-live 3.4s ease-in-out infinite;
+  }
+}
+
+@keyframes mesh-sweep {
+  0% {
+    transform: translateX(-58%);
+  }
+  100% {
+    transform: translateX(58%);
+  }
+}
+
+@keyframes readout-pulse {
+  0%,
+  100% {
+    opacity: 0.34;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+@keyframes bar-live {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
   }
 }

@@ -9,29 +9,22 @@ test.describe('Crucible Arena E2E Verification', () => {
 
     // 1. Verify Page Metadata & Headers
     await expect(page).toHaveTitle(/Crucible Arena/i);
-    await expect(page.locator('h1')).toContainText('Swarm Arena', { ignoreCase: true });
+    await expect(page.getByRole('heading', { name: /Arena_Overview/i })).toBeVisible();
 
-    // 2. Verify Spec Alignment text
-    await expect(page.getByText('0G Galileo Testnet')).toBeVisible();
+    // 2. Verify the screen uses the tactical command copy from the Arena view
+    await expect(page.getByText(/Crucible network coordination/i)).toBeVisible();
 
-    // 3. Verify the empty state or loading state of the Agent Grid is present
-    const isScanningTextVisible = await page.getByText(/Scanning 0G Network/i).isVisible();
-    const isAgentsVisible = await page
-      .locator('.grid')
-      .getByText('Active Agent Network')
-      .isVisible();
-
-    // Either the scanning text is present, or the active agents section loaded.
-    // This allows the test to pass even if wagmi fails to connect to a live RPC.
-    expect(isScanningTextVisible || isAgentsVisible).toBeTruthy();
+    // 3. Verify the coordination mesh panel is present.
+    await expect(page.getByText('Coordination Mesh', { exact: true })).toBeVisible();
+    await expect(page.getByText(/Active: .* Nodes/i)).toBeVisible();
 
     // 4. Verify Metric Cards are rendered
-    await expect(page.getByText('Value Secured', { exact: true })).toBeVisible();
-    await expect(page.getByText('Active Agents', { exact: true })).toBeVisible();
-    await expect(page.getByText('Tasks Pipeline', { exact: true })).toBeVisible();
+    await expect(page.getByText('System Load', { exact: true })).toBeVisible();
+    await expect(page.getByText('Active Nodes', { exact: true })).toBeVisible();
+    await expect(page.getByText('Mesh Stability', { exact: true })).toBeVisible();
 
-    // 5. Verify task open/live feeds exist
-    await expect(page.getByText(/Live Verification/i)).toBeVisible();
-    await expect(page.getByText(/Open Tasks/i)).toBeVisible();
+    // 5. Verify live operational panels exist
+    await expect(page.getByText('Live Events Feed', { exact: true })).toBeVisible();
+    await expect(page.getByText('Critical Agents', { exact: true })).toBeVisible();
   });
 });
