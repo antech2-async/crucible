@@ -1,19 +1,32 @@
 'use client';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState } from 'react';
-import { PlusCircle, Coins, Clock, CheckCircle2, Send, Loader2 } from 'lucide-react';
-import { parseEther } from 'viem';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  CheckCircle2,
+  Clock,
+  Coins,
+  GitBranch,
+  Loader2,
+  PlusCircle,
+  RadioTower,
+  Send,
+  ShieldCheck,
+} from 'lucide-react';
+import { keccak256, parseEther, toHex } from 'viem';
+import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucible/shared';
-import { Surface, SectionHeader, Button } from '@/components/ui';
+import { Button } from '@/components/ui';
 
-export default function PostTaskForm() {
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+type PostTaskFormProps = {
+  onPosted?: () => void;
+};
 
-  const { writeContract, data: hash } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
+  const [dismissedHash, setDismissedHash] = useState<string | null>(null);
+  const { writeContractAsync, data: hash, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const [formData, setFormData] = useState({
     topic: '',
@@ -21,67 +34,102 @@ export default function PostTaskForm() {
     deadlineHours: '24',
     minWords: '500',
     minSources: '5',
+    isSequential: false,
   });
+
+  const criteriaPayload = useMemo(
+    () => ({
+      topic: formData.topic.trim(),
+      minWords: Number(formData.minWords),
+      minSources: Number(formData.minSources),
+      isSequential: formData.isSequential,
+      version: 1,
+    }),
+    [formData.isSequential, formData.minSources, formData.minWords, formData.topic],
+  );
+
+  const criteriaHash = useMemo(
+    () => keccak256(toHex(JSON.stringify(criteriaPayload))),
+    [criteriaPayload],
+  );
+
+  const criteriaURI = useMemo(() => `0g://criteria/${criteriaHash.slice(2, 18)}`, [criteriaHash]);
+
+  useEffect(() => {
+    if (isConfirmed) onPosted?.();
+  }, [isConfirmed, onPosted]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    try {
-      const mockCriteriaURI = `0g://tasks/${Math.random().toString(36).substring(7)}`;
-      const mockCriteriaHash = '0x' + 'a'.repeat(64);
-      const deadlineSeconds = Math.floor(Date.now() / 1000) + parseInt(formData.deadlineHours) * 3600;
-      writeContract({
-        address: CONTRACT_ADDRESSES.TASK_ESCROW as `0x${string}`,
-        abi: TASK_ESCROW_ABI,
-        functionName: 'postTask',
-        args: [BigInt(deadlineSeconds), mockCriteriaHash as `0x${string}`, mockCriteriaURI],
-        value: parseEther(formData.budget),
-      });
-    } catch (err) {
-      console.error('Failed to post task', err);
-    } finally {
-      setLoading(false);
-    }
+
+    const deadlineSeconds =
+      Math.floor(Date.now() / 1000) + Math.max(1, parseInt(formData.deadlineHours, 10)) * 3600;
+
+    await writeContractAsync({
+      address: CONTRACT_ADDRESSES.TASK_ESCROW as `0x${string}`,
+      abi: TASK_ESCROW_ABI,
+      functionName: 'postTask',
+      args: [
+        BigInt(deadlineSeconds),
+        criteriaHash as `0x${string}`,
+        criteriaURI,
+        formData.isSequential,
+      ],
+      value: parseEther(formData.budget),
+    });
   };
 
-  if (isConfirmed || success) {
+  const showConfirmation = Boolean(isConfirmed && hash && dismissedHash !== hash);
+
+  if (showConfirmation) {
     return (
-      <Surface level="container" className="p-10 flex flex-col items-center text-center border-success/30">
-        <div className="w-12 h-12 border border-success/40 flex items-center justify-center mb-5">
-          <CheckCircle2 className="text-success" size={24} />
+      <section className="panel-interactive rounded-lg border border-secondary/30 bg-surface-low p-7 text-center shadow-[0_18px_44px_-30px_rgba(113,215,205,0.26)]">
+        <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded border border-secondary/40 bg-secondary/10">
+          <CheckCircle2 className="text-secondary" size={24} />
         </div>
-        <h3 className="text-base font-display font-bold uppercase tracking-widest text-on-surface mb-1">
-          Task Ingested
+        <h3 className="font-display text-xl font-black uppercase tracking-tight text-on-surface">
+          Escrow Posted
         </h3>
-        <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted">
-          Escrow Locked · Indexing on 0G Storage...
+        <p className="mt-2 break-all font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
+          Tx {hash?.slice(0, 10)}...{hash?.slice(-8)}
         </p>
-        <Button variant="ghost" size="sm" className="mt-7" onClick={() => setSuccess(false)}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-6"
+          onClick={() => setDismissedHash(hash ?? null)}
+        >
           Create Another
         </Button>
-      </Surface>
+      </section>
     );
   }
 
   return (
-    <Surface level="container" className="p-6">
-      <SectionHeader
-        title="Post New Task"
-        subtitle="Commission Verified AI Swarm"
-        action={<PlusCircle size={16} className="text-primary/60" />}
-        className="mb-6"
-      />
-
-      <form onSubmit={handleSubmit} className="space-y-5">
+    <section className="panel-interactive rounded-lg border border-border-strong/15 bg-surface-low shadow-[0_18px_44px_-32px_rgba(255,213,151,0.22)]">
+      <div className="flex items-start justify-between gap-4 border-b border-border-strong/10 p-5">
         <div>
-          <label className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted block mb-1.5">
-            Research Topic
+          <div className="mb-2 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+            <PlusCircle size={14} />
+            New Escrow Task
+          </div>
+          <h2 className="font-display text-2xl font-black tracking-tight text-on-surface">
+            Engage Escrow Protocol
+          </h2>
+        </div>
+        <ShieldCheck size={20} className="mt-1 text-primary/45" />
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5 p-5">
+        <div>
+          <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
+            Task Topic
           </label>
           <input
             required
             type="text"
-            placeholder="e.g. 0G Storage vs Arweave Data Availability"
-            className="w-full bg-surface-low border border-border py-2.5 px-3 text-sm font-mono text-on-surface placeholder:text-on-surface-dim focus:outline-none focus:border-primary transition-colors"
+            placeholder="0G storage benchmark summary"
+            className="w-full rounded border border-border bg-surface px-3 py-2.5 font-mono text-sm text-on-surface outline-none transition-colors placeholder:text-on-surface-dim focus:border-primary"
             value={formData.topic}
             onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
           />
@@ -89,94 +137,226 @@ export default function PostTaskForm() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted block mb-1.5">
-              Budget (0G)
+            <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
+              Budget
             </label>
             <div className="relative">
               <input
                 required
                 type="number"
-                step="0.01"
-                className="w-full bg-surface-low border border-border py-2.5 pl-3 pr-9 text-sm font-mono text-on-surface focus:outline-none focus:border-primary transition-colors"
+                min="0.0001"
+                step="0.0001"
+                className="w-full rounded border border-border bg-surface py-2.5 pl-3 pr-10 font-mono text-sm text-on-surface outline-none transition-colors focus:border-primary"
                 value={formData.budget}
                 onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
               />
-              <Coins className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-dim" size={13} />
+              <Coins
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-dim"
+                size={13}
+              />
             </div>
           </div>
           <div>
-            <label className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted block mb-1.5">
-              Deadline (Hours)
+            <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
+              Deadline (hours)
             </label>
             <div className="relative">
               <input
                 required
                 type="number"
-                className="w-full bg-surface-low border border-border py-2.5 pl-3 pr-9 text-sm font-mono text-on-surface focus:outline-none focus:border-primary transition-colors"
+                min="1"
+                className="w-full rounded border border-border bg-surface py-2.5 pl-3 pr-10 font-mono text-sm text-on-surface outline-none transition-colors focus:border-primary"
                 value={formData.deadlineHours}
                 onChange={(e) => setFormData({ ...formData, deadlineHours: e.target.value })}
               />
-              <Clock className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-dim" size={13} />
+              <span className="absolute right-9 top-1/2 -translate-y-1/2 font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
+                hrs
+              </span>
+              <Clock
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-dim"
+                size={13}
+              />
             </div>
+            <p className="mt-1.5 font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
+              Closes {formData.deadlineHours || '0'} hours after posting
+            </p>
           </div>
         </div>
 
-        <div className="p-4 bg-surface-low border border-border">
-          <p className="text-[9px] font-mono uppercase tracking-widest text-primary mb-4">
-            Autonomous Verification Policy
-          </p>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted">
-                  Min Result Length
-                </span>
-                <span className="text-[10px] font-mono font-bold text-primary">{formData.minWords} Words</span>
-              </div>
-              <input
-                type="range"
-                min="100"
-                max="2000"
-                step="100"
-                className="w-full h-px bg-border appearance-none cursor-pointer accent-[#FFD700]"
-                value={formData.minWords}
-                onChange={(e) => setFormData({ ...formData, minWords: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted">
-                  Source Integrity Check
-                </span>
-                <span className="text-[10px] font-mono font-bold text-primary">{formData.minSources} Links</span>
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="20"
-                step="1"
-                className="w-full h-px bg-border appearance-none cursor-pointer accent-[#FFD700]"
-                value={formData.minSources}
-                onChange={(e) => setFormData({ ...formData, minSources: e.target.value })}
-              />
-            </div>
+        <div>
+          <label className="mb-2 block font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
+            Execution Mode
+          </label>
+          <div className="grid grid-cols-2 overflow-hidden rounded border border-border bg-surface p-px">
+            <ModeButton
+              active={!formData.isSequential}
+              icon={<RadioTower size={13} />}
+              label="Parallel"
+              name="executionMode"
+              value="parallel"
+              onClick={() => setFormData({ ...formData, isSequential: false })}
+            />
+            <ModeButton
+              active={formData.isSequential}
+              icon={<GitBranch size={13} />}
+              label="Sequential"
+              name="executionMode"
+              value="sequential"
+              onClick={() => setFormData({ ...formData, isSequential: true })}
+            />
           </div>
+          <p className="mt-2 font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
+            {formData.isSequential
+              ? 'Sequential: agents run in order'
+              : 'Parallel: agents work together'}
+          </p>
+        </div>
+
+        <div className="space-y-4 border-y border-border-strong/10 py-4">
+          <SliderField
+            label="Minimum Length"
+            value={formData.minWords}
+            suffix="Words"
+            min="100"
+            max="2000"
+            step="100"
+            onChange={(value) => setFormData({ ...formData, minWords: value })}
+          />
+          <SliderField
+            label="Source Check"
+            value={formData.minSources}
+            suffix="Links"
+            min="1"
+            max="20"
+            step="1"
+            onChange={(value) => setFormData({ ...formData, minSources: value })}
+          />
+        </div>
+
+        <div className="min-w-0 rounded border border-border bg-surface px-3 py-2.5">
+          <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
+            Criteria Hash
+          </p>
+          <p className="truncate font-mono text-[10px] text-primary">{criteriaHash}</p>
         </div>
 
         <Button
           variant="primary"
-          className="w-full py-3 justify-center"
+          className="w-full justify-center py-3"
           type="submit"
-          disabled={loading || isConfirming}
+          disabled={isPending || isConfirming}
         >
-          {loading || isConfirming ? (
-            <>Initializing Swarm <Loader2 className="animate-spin" size={14} /></>
+          {isPending || isConfirming ? (
+            <>
+              Sealing Escrow <Loader2 className="animate-spin" size={14} />
+            </>
           ) : (
-            <>Seal Escrow &amp; Deploy <Send size={14} /></>
+            <>
+              Post Task <Send size={14} />
+            </>
           )}
         </Button>
       </form>
-    </Surface>
+    </section>
+  );
+}
+
+function ModeButton({
+  active,
+  icon,
+  label,
+  name,
+  value,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  name: string;
+  value: string;
+  onClick: () => void;
+}) {
+  return (
+    <label className="relative flex cursor-pointer items-center justify-center overflow-hidden rounded px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-on-surface-muted transition-colors hover:bg-surface-low hover:text-on-surface">
+      <input
+        type="radio"
+        name={name}
+        value={value}
+        checked={active}
+        onChange={onClick}
+        className="peer sr-only"
+      />
+      <span className="absolute inset-0 rounded bg-primary/10 opacity-0 transition-opacity peer-checked:opacity-100" />
+      <span className="relative flex items-center gap-2 transition-colors peer-checked:text-primary">
+        {icon}
+        {label}
+      </span>
+    </label>
+  );
+}
+
+function SliderField({
+  label,
+  value,
+  suffix,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  suffix: string;
+  min: string;
+  max: string;
+  step: string;
+  onChange: (value: string) => void;
+}) {
+  const numericValue = Number(value);
+  const numericMin = Number(min);
+  const numericMax = Number(max);
+  const progress =
+    Number.isFinite(numericValue) && Number.isFinite(numericMin) && Number.isFinite(numericMax)
+      ? ((numericValue - numericMin) / (numericMax - numericMin)) * 100
+      : 0;
+
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between gap-3">
+        <span className="font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
+          {label}
+        </span>
+        <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
+          {value} {suffix}
+        </span>
+      </div>
+      <div className="relative pb-5 pt-4">
+        <div
+          className="absolute top-0 -translate-x-1/2 rounded border border-primary/30 bg-surface px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-primary shadow-[0_10px_24px_-18px_rgba(255,176,0,0.9)]"
+          style={{ left: `${Math.min(100, Math.max(0, progress))}%` }}
+        >
+          {value} {suffix}
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          aria-label={`${label}: ${value} ${suffix}`}
+          className="h-1 w-full cursor-pointer appearance-none rounded bg-border accent-[#ffb000]"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onInput={(e) => onChange(e.currentTarget.value)}
+        />
+        <div className="mt-2 flex justify-between font-mono text-[8px] uppercase tracking-widest text-on-surface-dim">
+          <span>
+            {min} {suffix}
+          </span>
+          <span>
+            {max} {suffix}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -122,6 +122,15 @@
     transform: translateX(120%);
   }
 
+  .escrow-modal-shell {
+    display: none;
+  }
+
+  .escrow-modal-shell:target,
+  .escrow-modal-shell[data-open='true'] {
+    display: flex;
+  }
+
   .readout-pulse {
     animation: readout-pulse 2.6s ease-in-out infinite;
   }
