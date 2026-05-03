@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { CircleUserRound, Menu, Settings } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { ConnectWallet } from './ConnectWallet';
@@ -11,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-surface text-on-surface">
       <header className="fixed top-0 left-0 right-0 h-16 z-[100] flex items-center justify-between border-b border-border-strong/15 bg-surface/85 px-4 shadow-[0_24px_42px_-22px_rgba(230,226,223,0.16)] backdrop-blur-xl md:px-6">
-        <div className="flex min-w-0 items-center gap-5 md:gap-8">
+        <div className="flex min-w-0 items-center gap-4 md:gap-6">
           <button
             className="p-1.5 text-on-surface-dim transition-colors hover:text-primary lg:hidden"
             onClick={() => setIsSidebarOpen(true)}
@@ -19,31 +20,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <Menu size={18} />
           </button>
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-primary/10">
-              <span className="font-mono text-xs font-black text-primary">C</span>
-            </div>
-            <span className="max-w-[130px] truncate font-display text-lg font-black tracking-tight text-on-surface sm:max-w-none">
-              SOLARIS_NODE
+          <Link
+            href="/"
+            className="group flex min-w-0 items-center gap-3"
+            aria-label="Crucible home"
+          >
+            <CrucibleLogoMark />
+            <span className="flex min-w-0 flex-col leading-none">
+              <span className="font-display text-lg font-black text-on-surface sm:text-xl">
+                CRUCIBLE
+              </span>
+              <span className="hidden pt-1 font-mono text-[8px] uppercase tracking-[0.28em] text-primary/70 sm:block">
+                Agent Trust Layer
+              </span>
             </span>
+          </Link>
+          <div className="hidden items-center gap-2 rounded-full border border-border-strong/20 bg-surface-low/80 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.22em] text-on-surface-dim lg:flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-secondary shadow-[0_0_12px_rgba(113,215,205,0.75)]" />
+            0G Galileo Testnet
           </div>
-          <nav className="hidden items-center gap-2 md:flex">
-            <a className="px-2 py-1 font-display text-sm font-semibold text-primary" href="/">
-              Arena
-            </a>
-            <a
-              className="px-2 py-1 font-display text-sm text-on-surface/55 transition-colors hover:bg-primary/10 hover:text-on-surface"
-              href="/agents"
-            >
-              Agents
-            </a>
-            <a
-              className="px-2 py-1 font-display text-sm text-on-surface/55 transition-colors hover:bg-primary/10 hover:text-on-surface"
-              href="/tasks"
-            >
-              Tasks
-            </a>
-          </nav>
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
@@ -76,5 +71,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </footer>
     </div>
+  );
+}
+
+function CrucibleLogoMark() {
+  return (
+    <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-primary/25 bg-[linear-gradient(145deg,rgba(255,176,0,0.22),rgba(32,31,30,0.92)_58%,rgba(113,215,205,0.16))] shadow-[0_0_0_1px_rgba(255,213,151,0.05),0_18px_32px_-24px_rgba(255,176,0,0.8)] transition-all duration-300 group-hover:border-primary/60 group-hover:shadow-[0_0_0_1px_rgba(255,176,0,0.18),0_20px_38px_-22px_rgba(255,176,0,0.95)]">
+      <span className="absolute inset-0 bg-[radial-gradient(circle_at_28%_20%,rgba(255,213,151,0.26),transparent_32%)] opacity-80" />
+      <svg
+        viewBox="0 0 40 40"
+        aria-hidden="true"
+        className="relative h-8 w-8 text-primary transition-transform duration-300 group-hover:scale-105"
+      >
+        <path
+          d="M20 3.8 33.9 11.9v16.2L20 36.2 6.1 28.1V11.9L20 3.8Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinejoin="round"
+          opacity="0.95"
+        />
+        <path
+          d="M20 10.3c-4.5 1.9-6.8 4.9-6.8 8.9 0 4.7 3.2 7.9 7.5 7.9 3.2 0 5.8-1.7 7.1-4.6h-5.1c-.6.6-1.3.9-2.2.9-2 0-3.3-1.6-3.3-4.1 0-2.4 1.3-4.1 3.3-4.1 1 0 1.8.4 2.4 1.1h5C26.8 13 24.1 10.9 20 10.3Z"
+          fill="currentColor"
+        />
+        <path
+          d="M24.6 6.8 17 20.3h5.4L15.8 33"
+          fill="none"
+          stroke="rgb(var(--secondary))"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.9"
+        />
+      </svg>
+    </span>
   );
 }
