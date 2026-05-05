@@ -29,12 +29,6 @@ type DashboardAgent = {
   minStake?: string;
 };
 
-const FALLBACK_AGENTS: DashboardAgent[] = [
-  { id: 'SENTINEL_PRIME', tier: 4, score: 0.992, status: 'idle', tasks: 71 },
-  { id: 'FORGE_MASTER', tier: 3, score: 0.845, status: 'working', tasks: 44 },
-  { id: 'RELAY_ALPHA', tier: 4, score: 0.941, status: 'idle', tasks: 59 },
-];
-
 const FALLBACK_EVENTS = [
   {
     ts: '12:44:02',
@@ -144,25 +138,43 @@ export default function Arena() {
     return () => clearInterval(id);
   }, []);
 
-  const displayedAgents = agents.length ? agents : FALLBACK_AGENTS;
   const liveEvents = events.length ? events : FALLBACK_EVENTS;
 
   const avgTrust = useMemo(() => {
-    if (!displayedAgents.length) return 0.984;
-    return displayedAgents.reduce((s, a) => s + a.score, 0) / displayedAgents.length;
-  }, [displayedAgents]);
+    if (!agents.length) return 0;
+    return agents.reduce((s, a) => s + a.score, 0) / agents.length;
+  }, [agents]);
 
-  const meshIntegrity = Math.max(0, Math.min(99.8, avgTrust * 100)).toFixed(1);
-  const activeNodes = totalAgents > 0 ? totalAgents.toLocaleString() : '1,248';
+  const meshIntegrity = agents.length
+    ? `${Math.max(0, Math.min(99.8, avgTrust * 100)).toFixed(1)}%`
+    : '-';
+  const activeNodes =
+    totalAgents > 0 ? totalAgents.toLocaleString() : agents.length.toLocaleString();
   const taskCountValue = taskCount ? Number(taskCount) : 0;
-  const networkLoad = taskCountValue > 0 ? `${taskCountValue.toLocaleString()} Tasks` : '42.5k TPS';
-  const trustHealth = avgTrust > 0.8 ? 'Nominal' : avgTrust > 0.5 ? 'Degraded' : 'Critical';
-  const trustHealthColor =
-    avgTrust > 0.8 ? 'text-primary-muted' : avgTrust > 0.5 ? 'text-warning' : 'text-danger';
+  const networkLoad = `${taskCountValue.toLocaleString()} Tasks`;
+  const trustHealth = !agents.length
+    ? 'Awaiting'
+    : avgTrust > 0.8
+      ? 'Nominal'
+      : avgTrust > 0.5
+        ? 'Degraded'
+        : 'Critical';
+  const trustHealthColor = !agents.length
+    ? 'text-on-surface-muted'
+    : avgTrust > 0.8
+      ? 'text-primary-muted'
+      : avgTrust > 0.5
+        ? 'text-warning'
+        : 'text-danger';
 
   const topAgents = useMemo(
-    () => [...displayedAgents].sort((a, b) => b.score - a.score).slice(0, 3),
-    [displayedAgents],
+    () => [...agents].sort((a, b) => b.score - a.score).slice(0, 3),
+    [agents],
+  );
+
+  const topMeshAgents = useMemo(
+    () => [...agents].sort((a, b) => b.score - a.score).slice(0, 5),
+    [agents],
   );
 
   return (
@@ -178,16 +190,17 @@ export default function Arena() {
           title="Coordination Mesh"
           actions={
             <div className="flex min-w-0 flex-wrap justify-end gap-2">
-              <StatusPill tone="secondary">Active: {activeNodes} Nodes</StatusPill>
-              <StatusPill tone="primary">Uptime: 99.98%</StatusPill>
+              <StatusPill tone="secondary">Top Mesh: {topMeshAgents.length}/5</StatusPill>
+              <StatusPill tone="primary">Agents: {activeNodes}</StatusPill>
             </div>
           }
         />
 
         <div className="relative h-[260px] overflow-hidden md:h-[280px] lg:h-[260px]">
           <div className="readout-pulse absolute left-6 top-6 z-20 space-y-1 font-mono text-[9px] uppercase tracking-[0.08em] text-on-surface-muted/35 transition-colors duration-300 group-hover/mesh:text-secondary/70">
-            <div>SEC_CHANNEL_01: STABLE</div>
-            <div>LATENCY_OS: 14ms</div>
+            <div>AGENT_STREAM: {topMeshAgents.length ? 'LOCKED' : 'AWAITING'}</div>
+            <div>SORT: TRUST_SCORE_DESC</div>
+            <div>SOURCE: /API/AGENTS</div>
             <div className="mt-3 flex gap-1.5 opacity-0 transition-opacity duration-300 group-hover/mesh:opacity-100">
               {[0, 1, 2, 3].map((index) => (
                 <span
@@ -198,13 +211,17 @@ export default function Arena() {
               ))}
             </div>
           </div>
-          <MeshVisualizer agents={displayedAgents as any} />
+          <MeshVisualizer agents={topMeshAgents} />
         </div>
 
         <div className="grid grid-cols-3 gap-4 border-t border-border-strong/10 bg-surface/55 p-5">
-          <StatFooter label="Sync Status" value="Complete" tone="secondary" />
+          <StatFooter
+            label="Sync Status"
+            value={topMeshAgents.length ? 'Live' : 'Awaiting'}
+            tone="secondary"
+          />
           <StatFooter label="Network Load" value={networkLoad} />
-          <StatFooter label="Mesh Integrity" value={`${meshIntegrity}%`} tone="primary" />
+          <StatFooter label="Mesh Integrity" value={meshIntegrity} tone="primary" />
         </div>
       </section>
 
@@ -278,9 +295,13 @@ export default function Arena() {
           </Link>
         </div>
         <div className="space-y-6">
-          {topAgents.map((agent, index) => (
-            <CriticalAgentRow key={agent.id} agent={agent} index={index} />
-          ))}
+          {topAgents.length ? (
+            topAgents.map((agent) => <CriticalAgentRow key={agent.id} agent={agent} />)
+          ) : (
+            <div className="rounded-lg border border-dashed border-border-strong/20 px-4 py-8 text-center font-mono text-[10px] uppercase tracking-widest text-on-surface-muted/45">
+              No registered agents synced
+            </div>
+          )}
         </div>
       </section>
     </div>
@@ -462,13 +483,13 @@ function LiveEventRow({ event, index }: { event: any; index: number }) {
   );
 }
 
-function CriticalAgentRow({ agent, index }: { agent: DashboardAgent; index: number }) {
+function CriticalAgentRow({ agent }: { agent: DashboardAgent }) {
   const score = Math.round(agent.score * 1000) / 10;
   const isStable = score >= 90;
   const tone = isStable ? 'secondary' : 'primary';
-  const agentNames = ['SENTINEL_PRIME', 'FORGE_MASTER', 'RELAY_ALPHA'];
-  const subtitles = ['Sector 01-A Defense', 'Resource Allocation', 'Global Mesh Backbone'];
-  const displayName = agent.id.startsWith('0x') ? (agentNames[index] ?? 'NODE_OPERATOR') : agent.id;
+  const displayName = agent.id.startsWith('0x') ? shortAddress(agent.id) : agent.id;
+  const agentClass = agent.class === 'native' ? 'Native INFT' : 'External Agent';
+  const subtitle = `${agentClass} / ${agent.tasks ?? 0} tasks`;
 
   return (
     <div className="group/agent grid min-w-0 grid-cols-1 items-center gap-4 rounded-lg px-2 py-1 transition-colors duration-200 hover:bg-surface-container/50 md:grid-cols-[minmax(0,1fr)_minmax(160px,2fr)_auto] md:gap-6">
@@ -488,9 +509,7 @@ function CriticalAgentRow({ agent, index }: { agent: DashboardAgent; index: numb
           <p className="truncate font-display text-sm font-black uppercase tracking-wide text-on-surface">
             {displayName}
           </p>
-          <p className="truncate font-mono text-[10px] text-on-surface-muted/40">
-            {subtitles[index] ?? 'Crucible Swarm Node'}
-          </p>
+          <p className="truncate font-mono text-[10px] text-on-surface-muted/40">{subtitle}</p>
         </div>
       </div>
 
@@ -536,4 +555,8 @@ function CriticalAgentRow({ agent, index }: { agent: DashboardAgent; index: numb
       </div>
     </div>
   );
+}
+
+function shortAddress(value: string) {
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }
