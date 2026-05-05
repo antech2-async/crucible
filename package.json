@@ -17,6 +17,10 @@
     "lint:sol": "solhint \"packages/contracts/contracts/**/*.sol\"",
     "format": "prettier --write \"packages/**/*.{ts,sol,md,json}\"",
     "test": "npm run test --workspaces",
+    "test:e2e": "npm run test:e2e -w @crucible/frontend",
+    "test:e2e:headed": "npm run test:e2e:headed -w @crucible/frontend",
+    "test:e2e:ui": "npm run test:e2e:ui -w @crucible/frontend",
+    "playwright:install": "npm run playwright:install -w @crucible/frontend",
     "build": "npm run build --workspaces",
     "dev": "npm run dev --workspaces"
   },

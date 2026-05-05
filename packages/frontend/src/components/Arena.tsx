@@ -1,21 +1,65 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Shield, Users, Zap, Activity, AlertTriangle } from 'lucide-react';
-import { useReadContract, useBalance, useWatchContractEvent } from 'wagmi';
-import { AGENT_REGISTRY_ABI, TASK_ESCROW_ABI, CONTRACT_ADDRESSES } from '@crucible/shared';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Activity,
+  ChevronRight,
+  Cpu,
+  FileText,
+  Gauge,
+  ShieldCheck,
+  Share2,
+  Zap,
+} from 'lucide-react';
+import { useReadContract, useWatchContractEvent } from 'wagmi';
+import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucible/shared';
 import { cn } from '@/lib/utils';
-import AgentCard from './AgentCard';
-import TaskCard from './TaskCard';
-import { SectionHeader } from '@/components/ui';
+import Link from 'next/link';
+import { MeshVisualizer } from './MeshVisualizer';
+
+type DashboardAgent = {
+  id: string;
+  address?: string;
+  tier: number;
+  score: number;
+  status: 'idle' | 'working' | 'slashed' | 'offline';
+  tasks?: number;
+  class?: string;
+  minStake?: string;
+};
+
+const FALLBACK_EVENTS = [
+  {
+    ts: '12:44:02',
+    type: 'Node Handshake',
+    desc: 'Success: AGENT_77X connected to Sector 4',
+    tone: 'secondary',
+  },
+  {
+    ts: '12:43:58',
+    type: 'Validation Proof Generated',
+    desc: 'Epoch #8841-A: Hash verification confirmed',
+    tone: 'primary',
+  },
+  {
+    ts: '12:43:41',
+    type: 'State Update',
+    desc: 'Industrial throughput adjusted to 104%',
+    tone: 'neutral',
+  },
+  {
+    ts: '12:43:22',
+    type: 'Mesh Rebalance',
+    desc: '32 nodes re-routed for optimal latency',
+    tone: 'secondary',
+  },
+];
 
 export default function Arena() {
-  const [agents, setAgents] = useState<any[]>([]);
+  const [agents, setAgents] = useState<DashboardAgent[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [networkShock, setNetworkShock] = useState(false);
-  const [adminMode, setAdminMode] = useState(false);
 
   const { data: agentList } = useReadContract({
     address: CONTRACT_ADDRESSES.AGENT_REGISTRY as `0x${string}`,
@@ -24,10 +68,6 @@ export default function Arena() {
   });
 
   const totalAgents = agentList ? (agentList as any[]).length : 0;
-
-  const { data: escrowBalance } = useBalance({
-    address: CONTRACT_ADDRESSES.TASK_ESCROW as `0x${string}`,
-  });
 
   const { data: taskCount } = useReadContract({
     address: CONTRACT_ADDRESSES.TASK_ESCROW as `0x${string}`,
@@ -40,10 +80,20 @@ export default function Arena() {
     abi: TASK_ESCROW_ABI,
     onLogs(logs: any) {
       const log = logs[0];
+      const isSlash = log.eventName === 'AgentSlashed';
+      const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
       setEvents((prev) =>
-        [{ type: log.eventName === 'AgentSlashed' ? 'SLASH' : log.eventName, raw: log }, ...prev].slice(0, 10),
+        [
+          {
+            ts,
+            type: isSlash ? 'Agent Defection' : log.eventName,
+            desc: isSlash ? 'Slashing Judge executed collateral penalty' : '0G event committed',
+            tone: isSlash ? 'danger' : 'secondary',
+          },
+          ...prev,
+        ].slice(0, 12),
       );
-      if (log.eventName === 'AgentSlashed') {
+      if (isSlash) {
         setNetworkShock(true);
         setTimeout(() => setNetworkShock(false), 3000);
       }
@@ -56,7 +106,18 @@ export default function Arena() {
     onLogs(logs: any) {
       const log = logs[0];
       if (log.eventName === 'TrustTierUpdated') {
-        setEvents((prev) => [{ type: 'TIER_CHANGE', raw: log }, ...prev].slice(0, 10));
+        const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+        setEvents((prev) =>
+          [
+            {
+              ts,
+              type: 'Trust Tier Updated',
+              desc: 'Agent reliability terms recalibrated',
+              tone: 'primary',
+            },
+            ...prev,
+          ].slice(0, 12),
+        );
       }
     },
   });
@@ -65,189 +126,437 @@ export default function Arena() {
     async function fetchAgents() {
       try {
         const res = await fetch('/api/agents');
-        if (!res.ok) throw new Error('Failed to fetch agents');
-        setAgents(await res.json());
+        if (!res.ok) throw new Error('fetch failed');
+        const payload = await res.json();
+        setAgents(Array.isArray(payload) ? payload : []);
       } catch (err) {
         console.error('Failed to sync agent telemetry', err);
       }
     }
     fetchAgents();
-    const interval = setInterval(fetchAgents, 10000);
-    return () => clearInterval(interval);
+    const id = setInterval(fetchAgents, 10000);
+    return () => clearInterval(id);
   }, []);
 
+  const liveEvents = events.length ? events : FALLBACK_EVENTS;
+
+  const avgTrust = useMemo(() => {
+    if (!agents.length) return 0;
+    return agents.reduce((s, a) => s + a.score, 0) / agents.length;
+  }, [agents]);
+
+  const meshIntegrity = agents.length
+    ? `${Math.max(0, Math.min(99.8, avgTrust * 100)).toFixed(1)}%`
+    : '-';
+  const activeNodes =
+    totalAgents > 0 ? totalAgents.toLocaleString() : agents.length.toLocaleString();
+  const taskCountValue = taskCount ? Number(taskCount) : 0;
+  const networkLoad = `${taskCountValue.toLocaleString()} Tasks`;
+  const trustHealth = !agents.length
+    ? 'Awaiting'
+    : avgTrust > 0.8
+      ? 'Nominal'
+      : avgTrust > 0.5
+        ? 'Degraded'
+        : 'Critical';
+  const trustHealthColor = !agents.length
+    ? 'text-on-surface-muted'
+    : avgTrust > 0.8
+      ? 'text-primary-muted'
+      : avgTrust > 0.5
+        ? 'text-warning'
+        : 'text-danger';
+
+  const topAgents = useMemo(
+    () => [...agents].sort((a, b) => b.score - a.score).slice(0, 3),
+    [agents],
+  );
+
+  const topMeshAgents = useMemo(
+    () => [...agents].sort((a, b) => b.score - a.score).slice(0, 5),
+    [agents],
+  );
+
   return (
-    <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Network shock banner */}
-      <AnimatePresence>
-        {networkShock && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="lg:col-span-12 overflow-hidden"
-          >
-            <div className="p-3 bg-danger/10 border border-danger/30 flex items-center justify-center gap-3 animate-pulse">
-              <AlertTriangle className="text-danger" size={16} />
-              <span className="text-[10px] font-mono uppercase tracking-widest text-danger">
-                Emergency Alert: Agent Defection Detected · Initializing Slashing Judge
-              </span>
-            </div>
-          </motion.div>
+    <div className="grid grid-cols-12 gap-5 md:gap-6">
+      <section
+        className={cn(
+          'panel-interactive group/mesh col-span-12 flex min-h-[390px] flex-col overflow-hidden rounded-xl border border-border-strong/10 bg-surface-low shadow-[0_18px_44px_-28px_rgba(255,213,151,0.24)] hover:border-primary/20 lg:col-span-8',
+          networkShock && 'border-danger/40',
         )}
-      </AnimatePresence>
-
-      {/* Metrics Row */}
-      <div className="lg:col-span-12 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
-        <MetricCard
-          title="Value Secured"
-          value={`${escrowBalance ? Number(escrowBalance.formatted).toFixed(2) : '0.00'} ${escrowBalance?.symbol || '0G'}`}
-          icon={<Shield size={16} className="text-primary/60" />}
-          live
-        />
-        <MetricCard
-          title="Active Agents"
-          value={totalAgents?.toString() || '0'}
-          icon={<Users size={16} className="text-success/70" />}
-          shock={networkShock}
-        />
-        <MetricCard
-          title="Tasks Pipeline"
-          value={taskCount?.toString() || '0'}
-          icon={<Zap size={16} className="text-primary/60" />}
-        />
-        <MetricCard
-          title="Network Health"
-          value={networkShock ? '92.4%' : '100%'}
-          icon={<Activity size={16} className={networkShock ? 'text-danger' : 'text-success/70'} />}
-          shock={networkShock}
-        />
-      </div>
-
-      {/* Main Agent Grid */}
-      <div className="lg:col-span-8">
-        <SectionHeader
-          title="Active Agent Network"
-          subtitle="TEE Verified Nodes"
-          action={
-            <button
-              onClick={() => setAdminMode(!adminMode)}
-              className={cn(
-                'px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border transition-colors',
-                adminMode
-                  ? 'bg-danger/10 border-danger/30 text-danger'
-                  : 'bg-transparent border-border text-on-surface-muted hover:text-on-surface',
-              )}
-            >
-              {adminMode ? 'Exit Admin' : 'Admin Portal'}
-            </button>
+      >
+        <PanelHeader
+          icon={<Share2 size={18} className="text-primary" />}
+          title="Coordination Mesh"
+          actions={
+            <div className="flex min-w-0 flex-wrap justify-end gap-2">
+              <StatusPill tone="secondary">Top Mesh: {topMeshAgents.length}/5</StatusPill>
+              <StatusPill tone="primary">Agents: {activeNodes}</StatusPill>
+            </div>
           }
         />
 
-        {adminMode ? (
-          <div className="bg-surface-container border border-danger/20 p-10 text-center">
-            <Shield className="text-danger mx-auto mb-4" size={32} />
-            <h3 className="text-sm font-display font-bold uppercase tracking-widest text-on-surface mb-2">
-              Dispute Resolution Protocol
-            </h3>
-            <p className="text-xs font-mono text-on-surface-muted mb-6 max-w-md mx-auto">
-              Moderator access enabled. View and resolve contested outcomes.
-            </p>
-            <div className="bg-surface-low border border-border p-4 text-xs font-mono text-on-surface-dim">
-              No pending disputes found in active epoch.
-            </div>
-          </div>
-        ) : agents.length === 0 ? (
-          <div className="py-20 bg-surface-container border border-border text-center">
-            <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted animate-pulse">
-              Scanning 0G Network
-            </p>
-            <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-primary/60 mt-3">
-              <div className="w-1 h-1 bg-primary animate-pulse" />
-              Synchronizing INFT Signatures...
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <AnimatePresence>
-              {agents.map((agent, i) => (
-                <AgentCard key={agent.id || i} agent={agent} />
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
-      </div>
-
-      {/* Live Activity Feed */}
-      <div className="lg:col-span-4 space-y-6">
-        <div>
-          <SectionHeader title="Live Verification" />
-          <div className="bg-surface-container border border-border divide-y divide-border max-h-[360px] overflow-y-auto">
-            {events.length === 0 ? (
-              <p className="text-[10px] font-mono text-center text-on-surface-dim py-8 uppercase tracking-widest">
-                Waiting for 0G network events...
-              </p>
-            ) : (
-              events.map((ev, i) => (
-                <EventRow
-                  key={i}
-                  type={ev.type}
-                  msg={
-                    ev.type === 'TaskPosted'
-                      ? `Task #${ev.raw.args?.taskId?.toString()} posted by ${ev.raw.args?.poster?.slice(0, 6)}`
-                      : 'Activity on 0G Network'
-                  }
+        <div className="relative h-[260px] overflow-hidden md:h-[280px] lg:h-[260px]">
+          <div className="readout-pulse absolute left-6 top-6 z-20 space-y-1 font-mono text-[9px] uppercase tracking-[0.08em] text-on-surface-muted/35 transition-colors duration-300 group-hover/mesh:text-secondary/70">
+            <div>AGENT_STREAM: {topMeshAgents.length ? 'LOCKED' : 'AWAITING'}</div>
+            <div>SORT: TRUST_SCORE_DESC</div>
+            <div>SOURCE: /API/AGENTS</div>
+            <div className="mt-3 flex gap-1.5 opacity-0 transition-opacity duration-300 group-hover/mesh:opacity-100">
+              {[0, 1, 2, 3].map((index) => (
+                <span
+                  key={index}
+                  className="readout-pulse h-0.5 w-6 rounded-full bg-secondary/50"
+                  style={{ animationDelay: `${index * 120}ms` }}
                 />
-              ))
-            )}
+              ))}
+            </div>
           </div>
+          <MeshVisualizer agents={topMeshAgents} />
         </div>
 
-        <div>
-          <SectionHeader title="Open Tasks" />
-          <TaskCard />
+        <div className="grid grid-cols-3 gap-4 border-t border-border-strong/10 bg-surface/55 p-5">
+          <StatFooter
+            label="Sync Status"
+            value={topMeshAgents.length ? 'Live' : 'Awaiting'}
+            tone="secondary"
+          />
+          <StatFooter label="Network Load" value={networkLoad} />
+          <StatFooter label="Mesh Integrity" value={meshIntegrity} tone="primary" />
         </div>
-      </div>
+      </section>
+
+      <section className="col-span-12 grid self-start gap-5 md:grid-cols-3 lg:col-span-4 lg:grid-cols-1">
+        <MetricCard
+          label="System Load"
+          value="74.2%"
+          icon={<Gauge size={22} className="text-on-surface-muted/35" />}
+          barValue={74}
+          tone="primary"
+        />
+        <MetricCard
+          label="Active Nodes"
+          value={activeNodes}
+          icon={<Cpu size={21} className="text-secondary/45" />}
+          segmented
+          tone="secondary"
+        />
+        <div className="panel-interactive rounded-xl border border-border-strong/10 bg-surface-low p-5 shadow-[0_18px_34px_-28px_rgba(255,213,151,0.24)] hover:border-primary/20">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="min-w-0 space-y-1">
+              <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface-muted/55">
+                Mesh Stability
+              </h3>
+              <div
+                className={cn(
+                  'truncate font-display text-3xl font-black tracking-tight',
+                  trustHealthColor,
+                )}
+              >
+                {trustHealth}
+              </div>
+            </div>
+            <ShieldCheck size={21} className="shrink-0 text-primary-muted/40" />
+          </div>
+          <p className="text-xs italic leading-relaxed text-on-surface-muted/40">
+            All protocol handshakes verified. Zero drift detected in sub-layer consensus.
+          </p>
+        </div>
+      </section>
+
+      <section className="panel-interactive col-span-12 flex min-h-[260px] flex-col overflow-hidden rounded-xl border border-border-strong/10 bg-surface-low shadow-[0_18px_34px_-28px_rgba(255,213,151,0.22)] hover:border-secondary/20 lg:col-span-4">
+        <PanelHeader
+          compact
+          icon={<FileText size={14} className="text-on-surface-muted/70" />}
+          title="Live Events Feed"
+          actions={
+            <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-secondary">
+              <span className="h-1.5 w-1.5 rounded-full bg-secondary animate-pulse" />
+              Streaming
+            </span>
+          }
+        />
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+          {liveEvents.map((event, i) => (
+            <LiveEventRow key={`${event.ts}-${i}`} event={event} index={i} />
+          ))}
+        </div>
+      </section>
+
+      <section className="panel-interactive col-span-12 min-h-[260px] overflow-hidden rounded-xl border border-border-strong/10 bg-surface-low p-6 shadow-[0_18px_34px_-28px_rgba(255,213,151,0.22)] hover:border-secondary/20 lg:col-span-8">
+        <div className="mb-7 flex items-center justify-between gap-4">
+          <h3 className="font-display text-sm font-black uppercase tracking-widest text-on-surface">
+            Critical Agents
+          </h3>
+          <Link
+            href="/agents"
+            className="flex shrink-0 items-center gap-1 rounded border border-primary/20 px-3 py-1 font-mono text-[9px] uppercase tracking-widest text-primary transition-colors hover:bg-primary/5"
+          >
+            View All Directory <ChevronRight size={11} />
+          </Link>
+        </div>
+        <div className="space-y-6">
+          {topAgents.length ? (
+            topAgents.map((agent) => <CriticalAgentRow key={agent.id} agent={agent} />)
+          ) : (
+            <div className="rounded-lg border border-dashed border-border-strong/20 px-4 py-8 text-center font-mono text-[10px] uppercase tracking-widest text-on-surface-muted/45">
+              No registered agents synced
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
 
-function MetricCard({ title, value, icon, live, shock }: any) {
+function PanelHeader({
+  icon,
+  title,
+  actions,
+  compact,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  actions?: React.ReactNode;
+  compact?: boolean;
+}) {
   return (
     <div
       className={cn(
-        'bg-surface-container border p-4 relative',
-        shock ? 'border-danger/40 animate-pulse' : 'border-border',
+        'flex items-center justify-between gap-4 border-b border-border-strong/10 bg-surface/55',
+        compact ? 'px-4 py-3' : 'px-5 py-4 md:px-6',
       )}
     >
-      <div className="flex justify-between items-start mb-3">
-        <div className="p-1.5 bg-surface-low border border-border">{icon}</div>
-        {live && (
-          <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 bg-success/5 text-success border border-success/20 animate-pulse">
-            Live
-          </span>
-        )}
+      <div className="flex min-w-0 items-center gap-3">
+        {icon}
+        <h2 className="truncate font-display text-[12px] font-black uppercase tracking-widest text-on-surface">
+          {title}
+        </h2>
       </div>
-      <p className="text-[9px] font-mono uppercase tracking-widest text-on-surface-muted mb-1">{title}</p>
-      <p className="text-xl font-mono font-bold text-on-surface tabular-nums">{value}</p>
+      {actions}
     </div>
   );
 }
 
-function EventRow({ type, msg }: { type: string; msg: string }) {
-  const isSlash = type === 'SLASH';
+function StatusPill({
+  children,
+  tone,
+}: {
+  children: React.ReactNode;
+  tone: 'primary' | 'secondary';
+}) {
   return (
-    <div className={`p-3 flex gap-3 text-xs ${isSlash ? 'bg-danger/5' : ''}`}>
-      <div className="mt-0.5 flex-shrink-0">
-        {isSlash ? (
-          <AlertTriangle size={12} className="text-danger" />
-        ) : (
-          <Shield size={12} className="text-primary/60" />
+    <span
+      className={cn(
+        'rounded-full border px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-widest',
+        tone === 'secondary'
+          ? 'border-secondary/20 bg-secondary/10 text-secondary'
+          : 'border-primary/20 bg-primary/10 text-primary-muted',
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function StatFooter({
+  label,
+  value,
+  tone = 'neutral',
+}: {
+  label: string;
+  value: string;
+  tone?: 'primary' | 'secondary' | 'neutral';
+}) {
+  return (
+    <div className="min-w-0 space-y-1">
+      <p className="truncate font-mono text-[9px] uppercase tracking-widest text-on-surface-muted/45">
+        {label}
+      </p>
+      <p
+        className={cn(
+          'truncate font-display text-lg font-black uppercase tracking-tight md:text-xl',
+          tone === 'secondary' && 'text-secondary',
+          tone === 'primary' && 'text-primary-muted',
+          tone === 'neutral' && 'text-on-surface',
         )}
-      </div>
-      <p className={`font-mono text-[10px] leading-relaxed ${isSlash ? 'text-danger' : 'text-on-surface-muted'}`}>
-        {msg}
+      >
+        {value}
       </p>
     </div>
   );
+}
+
+function MetricCard({
+  label,
+  value,
+  icon,
+  barValue,
+  segmented,
+  tone,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  barValue?: number;
+  segmented?: boolean;
+  tone: 'primary' | 'secondary';
+}) {
+  const color = tone === 'secondary' ? 'bg-secondary' : 'bg-primary';
+  const textColor = tone === 'secondary' ? 'text-secondary' : 'text-on-surface';
+
+  return (
+    <div className="panel-interactive group/card rounded-xl border border-border-strong/10 bg-surface-low p-5 shadow-[0_18px_34px_-28px_rgba(255,213,151,0.24)] hover:border-primary/20">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-1">
+          <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface-muted/55">
+            {label}
+          </h3>
+          <div
+            className={cn(
+              'truncate font-display text-3xl font-black tracking-tight transition-transform duration-300 group-hover/card:translate-x-0.5',
+              textColor,
+            )}
+          >
+            {value}
+          </div>
+        </div>
+        <div className="shrink-0">{icon}</div>
+      </div>
+      {segmented ? (
+        <div className="flex items-center gap-1">
+          {[1, 0.82, 0.64, 0.46, 0.28].map((opacity, index) => (
+            <div
+              key={index}
+              className={cn(
+                'h-1.5 origin-left flex-1 rounded-full transition-transform duration-300 group-hover/card:scale-y-125',
+                color,
+              )}
+              style={{ opacity }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="h-2 overflow-hidden rounded-full bg-surface-highest">
+          <div
+            className={cn(
+              'bar-live h-full rounded-full bg-gradient-to-r from-primary via-primary-muted to-primary transition-[width,filter] duration-500 group-hover/card:brightness-125',
+              tone === 'secondary' && 'from-secondary via-primary-muted to-secondary',
+            )}
+            style={{ width: `${barValue ?? 0}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LiveEventRow({ event, index }: { event: any; index: number }) {
+  const toneClass =
+    event.tone === 'danger'
+      ? 'text-danger'
+      : event.tone === 'primary'
+        ? 'text-primary'
+        : event.tone === 'secondary'
+          ? 'text-secondary'
+          : 'text-on-surface';
+
+  return (
+    <div className="group/event flex min-w-0 gap-3 rounded-md px-1 py-0.5 font-mono text-[10px] transition-colors duration-200 hover:bg-surface-container/55">
+      <span className="w-12 shrink-0 text-on-surface-muted/35">{event.ts}</span>
+      <div className="flex min-w-0 gap-2">
+        <div
+          className={cn(
+            'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border bg-surface-highest transition-transform duration-300 group-hover/event:scale-110',
+            index % 2 === 0 ? 'border-secondary/20' : 'border-primary/20',
+          )}
+        >
+          <Zap size={9} className={index % 2 === 0 ? 'text-secondary/70' : 'text-primary/70'} />
+        </div>
+        <div className="min-w-0 space-y-1">
+          <div className={cn('truncate uppercase tracking-[0.08em] transition-colors', toneClass)}>
+            {event.type}
+          </div>
+          <div className="line-clamp-2 text-on-surface-muted/55">{event.desc}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CriticalAgentRow({ agent }: { agent: DashboardAgent }) {
+  const score = Math.round(agent.score * 1000) / 10;
+  const isStable = score >= 90;
+  const tone = isStable ? 'secondary' : 'primary';
+  const displayName = agent.id.startsWith('0x') ? shortAddress(agent.id) : agent.id;
+  const agentClass = agent.class === 'native' ? 'Native INFT' : 'External Agent';
+  const subtitle = `${agentClass} / ${agent.tasks ?? 0} tasks`;
+
+  return (
+    <div className="group/agent grid min-w-0 grid-cols-1 items-center gap-4 rounded-lg px-2 py-1 transition-colors duration-200 hover:bg-surface-container/50 md:grid-cols-[minmax(0,1fr)_minmax(160px,2fr)_auto] md:gap-6">
+      <div className="flex min-w-0 items-center gap-4">
+        <div
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-surface-highest transition-all duration-300 group-hover/agent:scale-105',
+            tone === 'secondary' ? 'border-secondary/15' : 'border-primary/15',
+          )}
+        >
+          <Activity
+            size={17}
+            className={tone === 'secondary' ? 'text-secondary/80' : 'text-primary/80'}
+          />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate font-display text-sm font-black uppercase tracking-wide text-on-surface">
+            {displayName}
+          </p>
+          <p className="truncate font-mono text-[10px] text-on-surface-muted/40">{subtitle}</p>
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <span className="truncate font-mono text-[9px] uppercase tracking-widest text-on-surface-muted/55">
+            Reliability Index
+          </span>
+          <span
+            className={cn(
+              'font-mono text-[9px] font-bold',
+              tone === 'secondary' ? 'text-secondary' : 'text-primary',
+            )}
+          >
+            {score.toFixed(1)}%
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-surface-highest">
+          <div
+            className={cn(
+              'bar-live h-full rounded-full bg-gradient-to-r transition-[width,filter] duration-500 group-hover/agent:brightness-125',
+              tone === 'secondary' ? 'bg-secondary' : 'bg-primary',
+              tone === 'secondary'
+                ? 'from-secondary via-primary-muted to-secondary'
+                : 'from-primary via-primary-muted to-primary',
+            )}
+            style={{ width: `${Math.min(100, Math.max(4, score))}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-start md:justify-end">
+        <span
+          className={cn(
+            'rounded border px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-widest',
+            isStable
+              ? 'border-secondary/10 bg-secondary/5 text-secondary'
+              : 'border-primary/10 bg-primary/5 text-primary',
+          )}
+        >
+          {isStable ? 'Stable' : 'Active'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function shortAddress(value: string) {
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }

@@ -1,5 +1,17 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const port = process.env.PLAYWRIGHT_PORT ?? '3002';
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
+const webServer = process.env.PLAYWRIGHT_BASE_URL
+  ? undefined
+  : {
+      command: `npm run dev -- -H 127.0.0.1 -p ${port}`,
+      cwd: process.cwd(),
+      url: baseURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 180000,
+    };
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,7 +20,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -17,10 +29,5 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: 'npx next dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 180000,
-  },
+  webServer,
 });
