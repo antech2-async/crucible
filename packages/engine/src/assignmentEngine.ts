@@ -5,13 +5,13 @@ import { ComputeService } from './services/computeService';
 import { TrustScorer } from './trustScorer';
 import { CriteriaChecker } from './criteriaChecker';
 import { costTracker } from './costTracker';
-import { logger, AgentHistory, TaskCriteria } from '@crucible/shared';
+import { logger, AgentHistory, TaskCriteria, CONTRACT_ADDRESSES } from '@crucible/shared';
+import { PipelineCoordinator } from './pipelineCoordinator';
 
 // Load ABIs
 import AgentRegistryABI from '../../contracts/artifacts/contracts/AgentRegistry.sol/AgentRegistry.json';
 import TaskEscrowABI from '../../contracts/artifacts/contracts/TaskEscrow.sol/TaskEscrow.json';
 import SlashingJudgeABI from '../../contracts/artifacts/contracts/SlashingJudge.sol/SlashingJudge.json';
-import { CONTRACT_ADDRESSES } from '@crucible/shared';
 
 export class AssignmentEngine {
   private provider: ethers.JsonRpcProvider;
@@ -23,6 +23,7 @@ export class AssignmentEngine {
   private computeService: ComputeService;
   private trustScorer: TrustScorer;
   private criteriaChecker: CriteriaChecker;
+  private pipelineCoordinator: PipelineCoordinator;
 
   constructor() {
     this.provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
@@ -48,6 +49,30 @@ export class AssignmentEngine {
     this.computeService = new ComputeService();
     this.trustScorer = new TrustScorer();
     this.criteriaChecker = new CriteriaChecker();
+    this.pipelineCoordinator = new PipelineCoordinator(this.provider, this.signer);
+  }
+
+  /**
+   * Start the off-chain event listeners to coordinate the protocol.
+   */
+  public startListening() {
+    logger.info('AssignmentEngine: Listening for coordination triggers...');
+
+    // 1. Listen for new tasks that need agent matching
+    this.escrowContract.on('TaskPosted', (taskId: bigint) => {
+      void this.assignAgentsForTask(taskId.toString());
+    });
+
+    // 2. Listen for sequential pipeline handoffs
+    this.escrowContract.on('PipelineAdvanced', (taskId: bigint, stage: number, nextAgent: string) => {
+      void this.pipelineCoordinator.triggerNextStage(taskId.toString(), Number(stage), nextAgent);
+    });
+
+    // 3. Listen for judge commits to update the cost tracker
+    this.judgeContract.on('TaskJudged', (taskId: bigint) => {
+      // Fee tracking logic is handled inside processTaskOutputs
+      logger.info(`Audit: Task ${taskId} judged.`);
+    });
   }
 
   async assignAgentsForTask(taskId: string): Promise<void> {

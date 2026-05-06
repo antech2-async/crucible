@@ -81,22 +81,23 @@ async function main() {
   };
 
   // 1. Deploy AgentRegistry
-  const registry = await (await getFactory('AgentRegistry').deploy()).waitForDeployment();
+  const registry = await (await getFactory('AgentRegistry').deploy({ gasPrice: 10000000000n })).waitForDeployment();
   console.log('AgentRegistry deployed to:', await registry.getAddress());
 
   // 2. Deploy TrustCalculator
-  const calculator = await (await getFactory('TrustCalculator').deploy()).waitForDeployment();
+  const calculator = await (await getFactory('TrustCalculator').deploy({ gasPrice: 10000000000n })).waitForDeployment();
   console.log('TrustCalculator deployed to:', await calculator.getAddress());
 
   // 3. Deploy AgentStakeVault
-  const vault = await (await getFactory('AgentStakeVault').deploy()).waitForDeployment();
+  const vault = await (await getFactory('AgentStakeVault').deploy({ gasPrice: 10000000000n })).waitForDeployment();
   console.log('AgentStakeVault deployed to:', await vault.getAddress());
 
   // 4. Deploy TaskEscrow
   const escrow = await (await getFactory('TaskEscrow').deploy(
     deployer.address, 
     await vault.getAddress(), 
-    await registry.getAddress()
+    await registry.getAddress(),
+    { gasPrice: 10000000000n }
   )).waitForDeployment();
   console.log('TaskEscrow deployed to:', await escrow.getAddress());
 
@@ -104,22 +105,23 @@ async function main() {
   const judge = await (await getFactory('SlashingJudge').deploy(
     await registry.getAddress(),
     await escrow.getAddress(),
-    await calculator.getAddress()
+    await calculator.getAddress(),
+    { gasPrice: 10000000000n }
   )).waitForDeployment();
   console.log('SlashingJudge deployed to:', await judge.getAddress());
 
   // 6. Deploy CrucibleINFT
-  const inft = await (await getFactory('CrucibleINFT').deploy(deployer.address)).waitForDeployment();
+  const inft = await (await getFactory('CrucibleINFT').deploy(deployer.address, { gasPrice: 10000000000n })).waitForDeployment();
   console.log('CrucibleINFT deployed to:', await inft.getAddress());
 
   // 7. Set authorizations
   console.log('Setting authorizations...');
-  await (await (registry as any).addAuthorizedUpdater(await judge.getAddress())).wait();
-  await (await (registry as any).setINFTContract(await inft.getAddress())).wait();
-  await (await (escrow as any).setSlashingJudge(await judge.getAddress())).wait();
-  await (await (vault as any).setEscrowContract(await escrow.getAddress())).wait();
+  await (await (registry as any).addAuthorizedUpdater(await judge.getAddress(), { gasPrice: 10000000000n })).wait();
+  await (await (registry as any).setINFTContract(await inft.getAddress(), { gasPrice: 10000000000n })).wait();
+  await (await (escrow as any).setSlashingJudge(await judge.getAddress(), { gasPrice: 10000000000n })).wait();
+  await (await (vault as any).setEscrowContract(await escrow.getAddress(), { gasPrice: 10000000000n })).wait();
   
-  await (await (judge as any).addAuthorizedCaller(deployer.address)).wait();
+  await (await (judge as any).addAuthorizedCaller(deployer.address, { gasPrice: 10000000000n })).wait();
 
   // 8. Seed beginner task pool
   console.log('Seeding beginner task pool...');
@@ -141,7 +143,7 @@ async function main() {
     const paymentPerTask = ethers.parseEther('0.001');
 
     for (let i = 0; i < taskBatch; i++) {
-        await (await (escrow as any).postTask(deadline, criteriaBytes32, criteriaURI, false, { value: paymentPerTask })).wait();
+        await (await (escrow as any).postTask(deadline, criteriaBytes32, criteriaURI, false, { value: paymentPerTask, gasPrice: 10000000000n })).wait();
     }
     console.log(`Successfully seeded ${taskBatch} beginner tasks.`);
   } catch (e) {

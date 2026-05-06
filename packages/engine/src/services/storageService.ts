@@ -36,7 +36,7 @@ export class StorageService {
     if (!rootHash) throw new Error('Merkle root hash generation failed');
 
     // @ts-ignore
-    const [, uploadErr] = await this.indexer.upload(memData, process.env.OG_RPC_URL!, this.signer, undefined, undefined, { gasLimit: 2000000, gasPrice: 10000000000 });
+    const [, uploadErr] = await this.indexer.upload(memData, process.env.OG_RPC_URL!, this.signer, undefined, undefined, { gasLimit: 500000 });
     
     // If it's just a timeout, we proceed because the tx was likely sent and deduplicated
     if (uploadErr && !uploadErr.toString().includes('timeout')) {
@@ -64,7 +64,7 @@ export class StorageService {
     if (!rootHash) throw new Error('Merkle root hash generation failed');
 
     // @ts-ignore
-    const [, uploadErr] = await this.indexer.upload(memData, process.env.OG_RPC_URL!, this.signer, undefined, undefined, { gasLimit: 2000000, gasPrice: 10000000000 });
+    const [, uploadErr] = await this.indexer.upload(memData, process.env.OG_RPC_URL!, this.signer, undefined, undefined, { gasLimit: 500000 });
     
     // If it's just a timeout, we proceed
     if (uploadErr && !uploadErr.toString().includes('timeout')) {

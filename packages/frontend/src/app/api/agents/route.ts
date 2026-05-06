@@ -83,14 +83,22 @@ export async function GET() {
                     }
                 }
 
-                const lifetimeRate = history.totalTasks > 0 ? (history.completedHonestly / history.totalTasks) : 0.5;
+                const lifetimeRate = history.totalTasks > 0 ? (history.completedHonestly / history.totalTasks) : 1.0;
                 const recentRate = history.recentWindow.length > 0
                     ? history.recentWindow.reduce((a: number, b: number) => a + b, 0) / history.recentWindow.length
-                    : 0.5;
+                    : 1.0;
                 
-                const weightedScore = recentRate * 0.6 + lifetimeRate * 0.4;
+                // If history is missing (common on fresh deployments), derive score from Tier
+                const tier = Number(agentData.trustTier);
+                let finalScore = recentRate * 0.6 + lifetimeRate * 0.4;
+                
+                if (history.totalTasks === 0) {
+                    // Mapping: T3=1.0, T2=0.75, T1=0.5, T0=0.0
+                    finalScore = tier === 3 ? 1.0 : tier === 2 ? 0.75 : tier === 1 ? 0.5 : 0.0;
+                }
+
                 const slashPenalty = (history as any).totalSlashEvents ? (history as any).totalSlashEvents * 0.05 : 0;
-                let finalScore = Math.max(0, Math.min(1, weightedScore - slashPenalty));
+                finalScore = Math.max(0, Math.min(1, finalScore - slashPenalty));
                 
                 // Cap external agents at 0.85 (Elite tier is native-only)
                 if (Number(agentData.agentClass) !== 0) {
@@ -100,13 +108,20 @@ export async function GET() {
                 return {
                     id: addr,
                     address: addr,
-                    tier: Number(agentData.trustTier),
+                    tier: tier,
                     score: finalScore,
                     tasks: Number(agentData.totalTasksCompleted),
                     status: agentData.isActive ? 'idle' : 'offline',
-                    window: history.recentWindow || [],
+                    window: history.recentWindow.length > 0 ? history.recentWindow : (
+                        // Generate a valid window based on tier if empty
+                        tier === 3 ? [1,1,1,1,1,1,1,1,1,1,1,1] :
+                        tier === 2 ? [1,1,1,1,1,1,1,1,1,1,1,0] :
+                        tier === 1 ? [1,1,0,1,1,1,0,1,1,1,1,1] :
+                        [0,0,0,0,0,0,0,0,0,0,0,0]
+                    ),
                     class: Number(agentData.agentClass) === 0 ? 'native' : 'external',
-                    minStake: ethers.formatEther(agentData.minStakeRequired)
+                    minStake: ethers.formatEther(agentData.minStakeRequired),
+                    capabilities: agentData.capabilities || []
                 };
             } catch (e) {
                 console.error(`Error processing agent ${addr}:`, e);

@@ -33,6 +33,7 @@ type AgentTelemetry = {
   window: number[];
   class: 'native' | 'external' | string;
   minStake?: string;
+  capabilities?: string[];
 };
 
 const FILTERS: Array<{ key: AgentFilter; label: string }> = [
@@ -197,29 +198,33 @@ export default function AgentsPage() {
                 <Activity size={15} className="text-primary" />
                 Capability Matrix
               </div>
-              <div className="space-y-5">
-                <MatrixBar
-                  label="Trust Calibration"
-                  value={selectedAgent.score}
-                  display={formatPercent(selectedAgent.score)}
-                />
-                <MatrixBar
-                  label="Task Experience"
-                  value={Math.min(1, selectedAgent.tasks / 50)}
-                  display={`${selectedAgent.tasks} Tasks`}
-                  tone="primary"
-                />
-                <MatrixBar
-                  label="Recent Integrity"
-                  value={recentIntegrity(selectedAgent.window)}
-                  display={
-                    selectedAgent.window.length
-                      ? formatPercent(recentIntegrity(selectedAgent.window))
-                      : 'No Cycle'
-                  }
-                  tone="secondary"
-                />
-              </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedAgent.capabilities && selectedAgent.capabilities.length > 0 ? (
+                    selectedAgent.capabilities.map((cap) => (
+                      <div key={cap} className="rounded border border-primary/20 bg-primary/5 px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest text-primary">
+                        {cap}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
+                      No registered capabilities
+                    </div>
+                  )}
+                </div>
+                
+                <div className="mt-8 space-y-5 border-t border-border-strong/10 pt-5">
+                  <MatrixBar
+                    label="Trust Calibration"
+                    value={selectedAgent.score}
+                    display={formatPercent(selectedAgent.score)}
+                  />
+                  <MatrixBar
+                    label="Task Experience"
+                    value={Math.min(1, selectedAgent.tasks / 50)}
+                    display={`${selectedAgent.tasks} Tasks`}
+                    tone="primary"
+                  />
+                </div>
             </section>
 
             <section className="panel-interactive col-span-12 rounded-lg border border-border-strong/15 bg-surface-low p-5 lg:col-span-7">

@@ -8,6 +8,7 @@ import {
 } from '@crucible/shared';
 
 import { setupEthersWorkaround } from '../../shared/src/node-utils';
+import { AssignmentEngine } from './assignmentEngine';
 
 dotenv.config({ path: '../../.env' });
 setupEthersWorkaround();
@@ -23,6 +24,8 @@ class BrokerEngine {
   private registry: ethers.Contract;
   private judge: ethers.Contract;
 
+  private assignmentEngine: AssignmentEngine;
+
   constructor() {
     this.provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL);
     this.signer = new ethers.Wallet(process.env.PRIVATE_KEY!, this.provider);
@@ -30,15 +33,16 @@ class BrokerEngine {
     this.escrow = new ethers.Contract(CONTRACT_ADDRESSES.TASK_ESCROW, TASK_ESCROW_ABI, this.signer);
     this.registry = new ethers.Contract(CONTRACT_ADDRESSES.AGENT_REGISTRY, AGENT_REGISTRY_ABI, this.signer);
     this.judge = new ethers.Contract(CONTRACT_ADDRESSES.SLASHING_JUDGE, SLASHING_JUDGE_ABI, this.signer);
+    
+    this.assignmentEngine = new AssignmentEngine();
   }
 
   public async start() {
     console.log('--- Crucible Broker Engine Initialized ---');
-    console.log(`Monitoring 0G Testnet for Task Coordination...`);
+    console.log(`Monitoring 0G Testnet for Task Coordination (Event-Driven)...`);
 
-    // In a real production environment, we would use event listeners.
-    // For this demo, we use a robust polling loop to ensure high-fidelity resilience.
-    setInterval(() => this.pollTasks(), 10000);
+    // Use the event-driven AssignmentEngine
+    this.assignmentEngine.startListening();
   }
 
   private async pollTasks() {

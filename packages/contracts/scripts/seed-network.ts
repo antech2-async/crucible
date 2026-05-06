@@ -87,8 +87,7 @@ async function main() {
       const tx = await deployer.sendTransaction({ 
         to: w.address, 
         value: ethers.parseEther("0.05"),
-        gasPrice: 10000000000, // 10 Gwei
-        gasLimit: 1000000
+        gasLimit: 200000
       });
       await tx.wait();
   }
@@ -125,7 +124,7 @@ async function main() {
       p.signer.address,
       `https://crucible.network/metadata/${p.name.toLowerCase()}`,
       bytes32Hash,
-      { value: ethers.parseEther("0.001"), gasPrice: 10000000000, gasLimit: 2000000 }
+      { value: ethers.parseEther("0.001"), gasLimit: 500000 }
     );
     const receipt = await mtx.wait();
     
@@ -147,15 +146,15 @@ async function main() {
 
     // C. Register in Crucible
     if (p.class === 0) {
-      const tx = await registry.connect(p.signer).registerNativeAgent(p.signer.address, tokenId, bytes32Hash, p.caps, { gasPrice: 10000000000, gasLimit: 1000000 });
+      const tx = await registry.connect(p.signer).registerNativeAgent(p.signer.address, tokenId, bytes32Hash, p.caps, { gasLimit: 300000 });
       await tx.wait();
     } else {
-      const tx = await registry.connect(p.signer).registerExternalAgent(p.signer.address, tokenId, bytes32Hash, p.caps, 'https://openclaw.local/webhook', { gasPrice: 10000000000, gasLimit: 1000000 });
+      const tx = await registry.connect(p.signer).registerExternalAgent(p.signer.address, tokenId, bytes32Hash, p.caps, 'https://openclaw.local/webhook', { gasLimit: 300000 });
       await tx.wait();
     }
 
     // D. Pre-fund Vault (0.005 OG each)
-    const vtx = await vault.connect(p.signer).deposit({ value: ethers.parseEther('0.005'), gasPrice: 10000000000, gasLimit: 500000 });
+    const vtx = await vault.connect(p.signer).deposit({ value: ethers.parseEther('0.005'), gasLimit: 100000 });
     await vtx.wait();
 
     // E. Proactive History Simulation (Section 15/29)
@@ -164,7 +163,7 @@ async function main() {
         bytes32Hash, 
         p.tier, 
         p.name === 'BadBot', // Simulations of past behavior
-        { gasPrice: 10000000000, gasLimit: 500000 }
+        { gasLimit: 100000 }
     );
     await htx.wait();
     
