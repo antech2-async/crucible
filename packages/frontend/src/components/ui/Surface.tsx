@@ -14,7 +14,13 @@ const levelClass = {
   high: 'bg-surface-high',
 };
 
-export function Surface({ level = 'container', bordered = true, className, children, ...props }: SurfaceProps) {
+export function Surface({
+  level = 'container',
+  bordered = true,
+  className,
+  children,
+  ...props
+}: SurfaceProps) {
   return (
     <div
       className={cn(levelClass[level], bordered && 'border border-border', className)}

@@ -48,13 +48,16 @@ export class CostTracker {
   logAudit() {
     const net = this.protocolFees - this.storageSpend;
     const status = net >= 0n ? 'PROFITABLE' : 'SUBSIDIZED';
-    
-    logger.info({
-      storageSpend: ethers.formatEther(this.storageSpend) + ' OG',
-      protocolFees: ethers.formatEther(this.protocolFees) + ' OG',
-      netRevenue: ethers.formatEther(net) + ' OG',
-      status: status
-    }, '--- Protocol Cost Audit (Section 18) ---');
+
+    logger.info(
+      {
+        storageSpend: ethers.formatEther(this.storageSpend) + ' OG',
+        protocolFees: ethers.formatEther(this.protocolFees) + ' OG',
+        netRevenue: ethers.formatEther(net) + ' OG',
+        status: status,
+      },
+      '--- Protocol Cost Audit (Section 18) ---',
+    );
   }
 }
 

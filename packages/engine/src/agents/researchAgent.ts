@@ -36,9 +36,9 @@ export class ResearchAgent {
     logger.info(`ResearchAgent (${this.agentAddress}) starting task ${taskInput.taskId}...`);
     await this.initPromise;
 
-    const contextPrompt = taskInput.previousContext 
+    const contextPrompt = taskInput.previousContext
       ? `\n\nCONTINUATION TASK: Build upon the previous agent's research findings provided below. DO NOT REPEAT their work, but extend it with new insights.\n\n[PREVIOUS AGENT OUTPUT]:\n${taskInput.previousContext}`
-      : "";
+      : '';
 
     const systemPrompt = `You are a research agent. Your job is to research a topic and return structured findings. Always include at least ${taskInput.minSources} distinct sources. Your response must be at least ${taskInput.minWords} words. Format your response as JSON with fields: summary, sources (array), wordCount.${contextPrompt}`;
 
@@ -65,15 +65,15 @@ export class ResearchAgent {
       }
 
       logger.info(`ResearchAgent completed inference. Attestation obtained: ${result.verified}`);
-      
+
       // Upload parsed output to 0G Storage instead of returning raw text as hash
       const outputData = {
-          agentAddress: this.agentAddress,
-          taskId: taskInput.taskId,
-          content: parsed.summary,
-          sources: parsed.sources || [],
-          wordCount: parsed.wordCount || 0,
-          timestamp: Date.now()
+        agentAddress: this.agentAddress,
+        taskId: taskInput.taskId,
+        content: parsed.summary,
+        sources: parsed.sources || [],
+        wordCount: parsed.wordCount || 0,
+        timestamp: Date.now(),
       };
       const { rootHash } = await this.storageService.uploadJSON(outputData);
 

@@ -1,10 +1,7 @@
 import { ethers } from 'ethers';
 import * as dotenv from 'dotenv';
 import OpenAI from 'openai';
-import { 
-    CONTRACT_ADDRESSES, 
-    TASK_ESCROW_ABI 
-} from '@crucible/shared';
+import { CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucible/shared';
 import { storage } from '@crucible/shared/StorageProvider';
 
 dotenv.config();
@@ -34,59 +31,60 @@ async function main() {
   const isSequential = task.isSequential;
   const currentStage = Number(task.currentPipelineStage);
 
-  let context = "";
+  let context = '';
   if (isSequential && currentStage > 0) {
-      console.log(`    Sequential Task detected. Fetching previous stage context...`);
-      const [agents] = await escrow.getTaskAgents(taskId);
-      const prevAgent = agents[currentStage - 1];
-      const prevOutputHash = await escrow.agentOutputHashes(taskId, prevAgent);
-      
-      // Pass the actual 0G Storage root hash directly
-      context = await storage.fetch(prevOutputHash);
-      console.log(`    Context acquired (${context.length} characters).`);
+    console.log(`    Sequential Task detected. Fetching previous stage context...`);
+    const [agents] = await escrow.getTaskAgents(taskId);
+    const prevAgent = agents[currentStage - 1];
+    const prevOutputHash = await escrow.agentOutputHashes(taskId, prevAgent);
+
+    // Pass the actual 0G Storage root hash directly
+    context = await storage.fetch(prevOutputHash);
+    console.log(`    Context acquired (${context.length} characters).`);
   }
 
   // 2.5 Fetch actual topic from Criteria
   const rawCriteria = await storage.fetch(task.criteriaURI);
-  let topic = "General Research";
+  let topic = 'General Research';
   try {
-      const criteria = JSON.parse(rawCriteria);
-      topic = criteria.stages?.[currentStage] || criteria.requiredCapabilities?.join(', ') || topic;
+    const criteria = JSON.parse(rawCriteria);
+    topic = criteria.stages?.[currentStage] || criteria.requiredCapabilities?.join(', ') || topic;
   } catch (e) {
-      console.warn("    Warning: Failed to parse criteria JSON. Using fallback topic.");
+    console.warn('    Warning: Failed to parse criteria JSON. Using fallback topic.');
   }
 
   // 3. Actual LLM Inference
   const client = new OpenAI({
-    apiKey: process.env.LLM_API_KEY || "EMPTY",
-    baseURL: process.env.LLM_BASE_URL || "https://api.openai.com/v1"
+    apiKey: process.env.LLM_API_KEY || 'EMPTY',
+    baseURL: process.env.LLM_BASE_URL || 'https://api.openai.com/v1',
   });
 
-  const prompt = isSequential && currentStage === 0 
-    ? `Perform in-depth research on: ${topic}. Focus on 0G ecosystem details.`
-    : `Using this research context: ${context}, write a professional executive summary for the topic: ${topic}.`;
+  const prompt =
+    isSequential && currentStage === 0
+      ? `Perform in-depth research on: ${topic}. Focus on 0G ecosystem details.`
+      : `Using this research context: ${context}, write a professional executive summary for the topic: ${topic}.`;
 
   console.log(`    Invoking LLM (${process.env.LLM_MODEL || 'gpt-4o-mini'})...`);
-  
-  let resultText = "";
+
+  let resultText = '';
   if (process.env.LLM_API_KEY) {
-      const response = await client.chat.completions.create({
-        model: process.env.LLM_MODEL || "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }]
-      });
-      resultText = response.choices[0].message.content || "";
+    const response = await client.chat.completions.create({
+      model: process.env.LLM_MODEL || 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+    });
+    resultText = response.choices[0].message.content || '';
   } else {
-      console.warn("    Warning: No LLM_API_KEY found. Generating high-fidelity simulation.");
-      resultText = `CRUCIBLE_RESEARCH_REPORT:\nTarget: 0G Storage Performance\nFindings: 0G provides sub-second DA latency compared to Arweave's block-based settlement. This makes it ideal for real-time agent coordination as described in our criteria. End of report. (Topic Hash: ${task.criteriaHash})`;
+    console.warn('    Warning: No LLM_API_KEY found. Generating high-fidelity simulation.');
+    resultText = `CRUCIBLE_RESEARCH_REPORT:\nTarget: 0G Storage Performance\nFindings: 0G provides sub-second DA latency compared to Arweave's block-based settlement. This makes it ideal for real-time agent coordination as described in our criteria. End of report. (Topic Hash: ${task.criteriaHash})`;
   }
 
   // 4. Commit to StorageProvider
-  const { hash, uri } = await storage.commit(resultText);
+  const { hash, uri: _uri } = await storage.commit(resultText);
   console.log(`    Inference committed to Storage (Hash: ${hash})`);
 
   // 5. Submit to Crucible
   console.log('    Submitting output to TaskEscrow...');
-  const tx = await escrow.submitOutput(taskId, hash, "0x");
+  const tx = await escrow.submitOutput(taskId, hash, '0x');
   await tx.wait();
 
   console.log('    SUCCESS: AI results verified and submitted.');

@@ -1,0 +1,9 @@
+node_modules
+dist
+.next
+artifacts
+cache
+out
+.env
+.env.*
+*.test.ts.snap

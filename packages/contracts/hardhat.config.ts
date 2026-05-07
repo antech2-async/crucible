@@ -3,25 +3,27 @@ import axios from 'axios';
 
 // Disable global fetch to workaround undici maxRedirections bug in Node v22 / ethers v6
 try {
-    // @ts-ignore
-    global.fetch = undefined;
-} catch (e) {}
+  // @ts-expect-error - Global fetch override for ethers v6
+  global.fetch = undefined;
+} catch (e) {
+  // Ignore errors if fetch is already undefined
+}
 
 // Register Axios as the global fetcher for Ethers v6
 FetchRequest.registerGetUrl(async (req) => {
-    const response = await axios({
-        url: req.url,
-        method: req.method,
-        data: req.body ? Buffer.from(req.body) : undefined,
-        headers: req.headers,
-        responseType: 'arraybuffer',
-    });
-    return {
-        statusCode: response.status,
-        statusMessage: response.statusText,
-        headers: response.headers as any,
-        body: new Uint8Array(response.data)
-    };
+  const response = await axios({
+    url: req.url,
+    method: req.method,
+    data: req.body ? Buffer.from(req.body) : undefined,
+    headers: req.headers,
+    responseType: 'arraybuffer',
+  });
+  return {
+    statusCode: response.status,
+    statusMessage: response.statusText,
+    headers: response.headers as any,
+    body: new Uint8Array(response.data),
+  };
 });
 
 import { HardhatUserConfig } from 'hardhat/config';

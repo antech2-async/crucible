@@ -7,15 +7,21 @@ interface MonoValueProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 const sizeClass = {
-  xs:   'text-[10px]',
-  sm:   'text-xs',
+  xs: 'text-[10px]',
+  sm: 'text-xs',
   base: 'text-sm',
-  lg:   'text-base',
-  xl:   'text-xl',
-  '2xl':'text-2xl',
+  lg: 'text-base',
+  xl: 'text-xl',
+  '2xl': 'text-2xl',
 };
 
-export function MonoValue({ size = 'base', dim = false, className, children, ...props }: MonoValueProps) {
+export function MonoValue({
+  size = 'base',
+  dim = false,
+  className,
+  children,
+  ...props
+}: MonoValueProps) {
   return (
     <span
       className={cn(

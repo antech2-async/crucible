@@ -16,12 +16,12 @@ async function main() {
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const signer = new ethers.Wallet(privateKey, provider);
 
-  const amountStr = process.argv[2] || "0.1";
+  const amountStr = process.argv[2] || '0.1';
   const amount = ethers.parseEther(amountStr);
 
   const VAULT_ABI = [
-    "function deposit() external payable",
-    "function getAvailableBalance(address agentOwner, address agentAddress) external view returns (uint256)"
+    'function deposit() external payable',
+    'function getAvailableBalance(address agentOwner, address agentAddress) external view returns (uint256)',
   ];
   const vaultContract = new ethers.Contract(vaultAddress, VAULT_ABI, signer);
 
@@ -30,7 +30,7 @@ async function main() {
   await tx.wait();
 
   console.log('SUCCESS: Deposit complete.');
-  
+
   const balance = await vaultContract.getAvailableBalance(signer.address, signer.address);
   console.log('Current Available Balance:', ethers.formatEther(balance), 'OG');
 }

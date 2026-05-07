@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export enum TaskStatus {
   OPEN = 0,
   ASSIGNED = 1,
@@ -45,16 +44,17 @@ export interface TaskCriteria {
   taskId: string;
   requiredCapabilities: string[];
   isSequential: boolean;
-  stages?: string[]; // stage-specific topics/instructions
   criteria: Criterion[];
   deadline: number;
+  stages?: string[];
+  systemPrompts?: string[];
 }
 
 export interface VerifiedInferenceResult {
   taskId: string;
   agentId: string;
   output: string;
-  attestation: any;
+  attestation: unknown;
   model: string;
   timestamp: number;
   verified: boolean;

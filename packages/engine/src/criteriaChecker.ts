@@ -1,9 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Criterion } from '@crucible/shared';
+
 export class CriteriaChecker {
   async verifyCriteria(
     agentAddress: string,
     taskId: string,
-    criteria: any[],
+    criteria: Criterion[],
     outputContent: string,
   ): Promise<boolean> {
     let passedCount = 0;
@@ -22,11 +23,11 @@ export class CriteriaChecker {
     return passedCount / totalWeight >= 0.7;
   }
 
-  private evaluateCriterion(criterion: any, outputContent: string): boolean {
+  private evaluateCriterion(criterion: Criterion, outputContent: string): boolean {
     const valStr = criterion.expectedValue ? criterion.expectedValue.toString().toLowerCase() : '';
 
     // Field Extraction
-    let actualValue: any = 0;
+    let actualValue: string | number = 0;
     if (criterion.fieldName === 'wordCount') {
       actualValue = outputContent.split(/\s+/).filter((w) => w.length > 0).length;
     } else if (criterion.fieldName === 'sourceCount') {

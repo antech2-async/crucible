@@ -10,7 +10,7 @@ describe('Hardening Audit', () => {
   let vault: AgentStakeVault;
   let registry: AgentRegistry;
   let calculator: TrustCalculator;
-  
+
   let owner: SignerWithAddress;
   let poster: SignerWithAddress;
   let agent1: SignerWithAddress;
@@ -21,14 +21,14 @@ describe('Hardening Audit', () => {
 
   beforeEach(async () => {
     [owner, poster, agent1, agent2, assignmentEngine, slashingJudge] = await ethers.getSigners();
-    
+
     const ERC721Mock = await ethers.getContractFactory('CrucibleINFT');
     inftMock = await ERC721Mock.deploy(owner.address);
 
     const Registry = await ethers.getContractFactory('AgentRegistry');
     registry = await Registry.deploy();
     await registry.setINFTContract(await inftMock.getAddress());
-    
+
     const Vault = await ethers.getContractFactory('AgentStakeVault');
     vault = await Vault.deploy();
 
@@ -36,19 +36,31 @@ describe('Hardening Audit', () => {
     calculator = await Calc.deploy();
 
     const TaskEscrowFactory = await ethers.getContractFactory('TaskEscrow');
-    escrow = await TaskEscrowFactory.deploy(assignmentEngine.address, await vault.getAddress(), await registry.getAddress());
+    escrow = await TaskEscrowFactory.deploy(
+      assignmentEngine.address,
+      await vault.getAddress(),
+      await registry.getAddress(),
+    );
 
     await vault.setEscrowContract(await escrow.getAddress());
     await escrow.setSlashingJudge(slashingJudge.address);
     await vault.fundTreasury({ value: ethers.parseEther('10.0') });
 
     // Register Agent 1 as NATIVE
-    await inftMock.connect(agent1).mintAgent(agent1.address, "uri1", ethers.ZeroHash, "0x", { value: ethers.parseEther("0.001") });
-    await registry.connect(agent1).registerNativeAgent(agent1.address, 1, ethers.ZeroHash, ['research']);
+    await inftMock.connect(agent1).mintAgent(agent1.address, 'uri1', ethers.ZeroHash, '0x', {
+      value: ethers.parseEther('0.001'),
+    });
+    await registry
+      .connect(agent1)
+      .registerNativeAgent(agent1.address, 1, ethers.ZeroHash, ['research']);
 
     // Register Agent 2 as EXTERNAL
-    await inftMock.connect(agent2).mintAgent(agent2.address, "uri2", ethers.ZeroHash, "0x", { value: ethers.parseEther("0.001") });
-    await registry.connect(agent2).registerExternalAgent(agent2.address, 2, ethers.ZeroHash, ['writing'], 'http://webhook');
+    await inftMock.connect(agent2).mintAgent(agent2.address, 'uri2', ethers.ZeroHash, '0x', {
+      value: ethers.parseEther('0.001'),
+    });
+    await registry
+      .connect(agent2)
+      .registerExternalAgent(agent2.address, 2, ethers.ZeroHash, ['writing'], 'http://webhook');
   });
 
   describe('Sequential Bottleneck Slashing', () => {
@@ -59,7 +71,7 @@ describe('Hardening Audit', () => {
         ethers.encodeBytes32String('criteria'),
         'uri',
         true, // isSequential
-        { value: ethers.parseEther('1.0') }
+        { value: ethers.parseEther('1.0') },
       );
 
       // 2. Assign both agents
@@ -67,11 +79,9 @@ describe('Hardening Audit', () => {
       await vault.connect(agent2).deposit({ value: ethers.parseEther('1.0') });
 
       const stakeAmount = ethers.parseEther('0.1');
-      await escrow.connect(assignmentEngine).assignAgents(
-        0,
-        [agent1.address, agent2.address],
-        [stakeAmount, stakeAmount]
-      );
+      await escrow
+        .connect(assignmentEngine)
+        .assignAgents(0, [agent1.address, agent2.address], [stakeAmount, stakeAmount]);
 
       // 3. Fast forward past deadline
       await ethers.provider.send('evm_increaseTime', [3601]);
@@ -104,31 +114,31 @@ describe('Hardening Audit', () => {
 
   describe('Protocol Fee and Yield', () => {
     it('redirects 2% of slashed stakes to the protocol treasury', async () => {
-      await escrow.connect(poster).postTask(
-        (await ethers.provider.getBlock('latest'))!.timestamp + 3600,
-        ethers.encodeBytes32String('criteria'),
-        'uri',
-        false,
-        { value: ethers.parseEther('1.0') }
-      );
+      await escrow
+        .connect(poster)
+        .postTask(
+          (await ethers.provider.getBlock('latest'))!.timestamp + 3600,
+          ethers.encodeBytes32String('criteria'),
+          'uri',
+          false,
+          { value: ethers.parseEther('1.0') },
+        );
 
       await vault.connect(agent1).deposit({ value: ethers.parseEther('1.0') });
       const stakeAmount = ethers.parseEther('0.1');
 
       const initialTreasury = await vault.slashedTreasury();
-      await escrow.connect(assignmentEngine).assignAgents(
-        0, [agent1.address], [stakeAmount]
-      );
+      await escrow.connect(assignmentEngine).assignAgents(0, [agent1.address], [stakeAmount]);
 
       await ethers.provider.send('evm_increaseTime', [3601]);
       await ethers.provider.send('evm_mine', []);
 
       await escrow.failExpiredTask(0);
-      
+
       const finalTreasury = await vault.slashedTreasury();
       const expectedFee = (stakeAmount * BigInt(2)) / BigInt(100);
       const subsidyUsed = stakeAmount / BigInt(2);
-      
+
       // Treasury receives 2% fee, but loses the 50% subsidy it put up
       expect(finalTreasury).to.equal(initialTreasury + expectedFee - subsidyUsed);
     });

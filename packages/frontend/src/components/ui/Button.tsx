@@ -7,10 +7,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClass = {
-  primary: 'bg-primary text-on-primary hover:bg-primary-muted border border-primary font-display font-bold',
-  outline: 'bg-transparent text-primary border border-primary hover:bg-primary/10 font-display font-bold',
-  ghost: 'bg-transparent text-on-surface-muted border border-transparent hover:border-border hover:text-on-surface font-display',
-  danger: 'bg-transparent text-danger border border-danger hover:bg-danger/10 font-display font-bold',
+  primary:
+    'bg-primary text-on-primary hover:bg-primary-muted border border-primary font-display font-bold',
+  outline:
+    'bg-transparent text-primary border border-primary hover:bg-primary/10 font-display font-bold',
+  ghost:
+    'bg-transparent text-on-surface-muted border border-transparent hover:border-border hover:text-on-surface font-display',
+  danger:
+    'bg-transparent text-danger border border-danger hover:bg-danger/10 font-display font-bold',
 };
 
 const sizeClass = {
@@ -19,7 +23,13 @@ const sizeClass = {
   lg: 'px-7 py-3.5 text-sm tracking-widest uppercase',
 };
 
-export function Button({ variant = 'primary', size = 'md', className, children, ...props }: ButtonProps) {
+export function Button({
+  variant = 'primary',
+  size = 'md',
+  className,
+  children,
+  ...props
+}: ButtonProps) {
   return (
     <button
       className={cn(

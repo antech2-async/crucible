@@ -3,9 +3,10 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '../../.env' });
 
 async function main() {
-  const indexerUrl = process.env.OG_STORAGE_INDEXER_URL || 'https://indexer-storage-testnet-turbo.0g.ai';
+  const indexerUrl =
+    process.env.OG_STORAGE_INDEXER_URL || 'https://indexer-storage-testnet-turbo.0g.ai';
   console.log(`Querying Indexer at: ${indexerUrl}`);
-  
+
   try {
     const response = await axios.get(`${indexerUrl}/status`);
     console.log('--- 0G Infrastructure Status ---');

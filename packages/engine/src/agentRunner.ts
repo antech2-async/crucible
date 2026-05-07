@@ -56,31 +56,43 @@ export class AgentRunner {
             const taskData = await this.escrowContract.tasks(taskId);
             const isSequential = taskData.isSequential;
             const currentStage = taskData.currentPipelineStage;
-            
-            let previousContext = "";
+
+            let previousContext = '';
             if (isSequential && currentStage > 0) {
-                logger.info(`🔗 Sequential Stage detected (${currentStage}). Fetching previous context...`);
-                const previousAgent = await this.escrowContract.getTaskAgents(taskId).then(res => res[0][currentStage - 1]);
-                const prevCID = await this.escrowContract.agentOutputHashes(taskId, previousAgent);
-                
-                if (prevCID) {
-                    const download = await this.storageService.downloadJSON<any>(prevCID);
-                    previousContext = typeof download === 'string' ? download : JSON.stringify(download);
-                    logger.info(`✅ Sequential Context linked for Agent ${assignedAddr}`);
-                }
+              logger.info(
+                `🔗 Sequential Stage detected (${currentStage}). Fetching previous context...`,
+              );
+              const previousAgent = await this.escrowContract
+                .getTaskAgents(taskId)
+                .then((res) => res[0][currentStage - 1]);
+              const prevCID = await this.escrowContract.agentOutputHashes(taskId, previousAgent);
+
+              if (prevCID) {
+                const download = await this.storageService.downloadJSON<any>(prevCID);
+                previousContext =
+                  typeof download === 'string' ? download : JSON.stringify(download);
+                logger.info(`✅ Sequential Context linked for Agent ${assignedAddr}`);
+              }
             }
 
             // Fetch criteria from 0G Storage
             const criteria = await this.storageService.downloadJSON<any>(taskData.criteriaURI);
-            const topic = criteria.stages?.[currentStage] || criteria.requiredCapabilities?.join(', ') || 'General research';
+            const topic =
+              criteria.stages?.[currentStage] ||
+              criteria.requiredCapabilities?.join(', ') ||
+              'General research';
 
             // Wake up the local agent with real context
             const output = await localAgent.execute({
               topic: topic,
               taskId: taskId.toString(),
-              minSources: criteria.criteria?.find((c: any) => c.fieldName === 'sourceCount')?.expectedValue || 3,
-              minWords: criteria.criteria?.find((c: any) => c.fieldName === 'wordCount')?.expectedValue || 300,
-              previousContext: previousContext
+              minSources:
+                criteria.criteria?.find((c: any) => c.fieldName === 'sourceCount')?.expectedValue ||
+                3,
+              minWords:
+                criteria.criteria?.find((c: any) => c.fieldName === 'wordCount')?.expectedValue ||
+                300,
+              previousContext: previousContext,
             });
 
             logger.info(`Agent ${assignedAddr} finished inference. Submitting output to chain.`);

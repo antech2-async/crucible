@@ -44,8 +44,12 @@ export default function AgentCard({ agent }: AgentCardProps) {
         <div className="mb-4">
           <div className="flex justify-between items-end mb-2">
             <div>
-              <p className="text-[9px] font-mono uppercase tracking-widest text-on-surface-dim mb-1">Trust Score</p>
-              <p className={`text-2xl font-mono font-bold tabular-nums ${isSlashed ? 'text-danger' : 'text-primary'}`}>
+              <p className="text-[9px] font-mono uppercase tracking-widest text-on-surface-dim mb-1">
+                Trust Score
+              </p>
+              <p
+                className={`text-2xl font-mono font-bold tabular-nums ${isSlashed ? 'text-danger' : 'text-primary'}`}
+              >
                 {(agent.score * 100).toFixed(1)}%
               </p>
             </div>
@@ -62,7 +66,9 @@ export default function AgentCard({ agent }: AgentCardProps) {
 
         {/* Recent performance */}
         <div className="mb-4">
-          <p className="text-[9px] font-mono uppercase tracking-widest text-on-surface-dim mb-2">Last 10</p>
+          <p className="text-[9px] font-mono uppercase tracking-widest text-on-surface-dim mb-2">
+            Last 10
+          </p>
           <div className="flex gap-1 h-2">
             {Array.from({ length: 10 }).map((_, i) => {
               const result = agent.window[i];
@@ -89,7 +95,9 @@ export default function AgentCard({ agent }: AgentCardProps) {
           ) : (
             <Cpu size={12} className="text-primary/60" />
           )}
-          <span className={`text-[9px] font-mono uppercase tracking-widest ${isSlashed ? 'text-danger' : 'text-on-surface-muted'}`}>
+          <span
+            className={`text-[9px] font-mono uppercase tracking-widest ${isSlashed ? 'text-danger' : 'text-on-surface-muted'}`}
+          >
             {isSlashed
               ? 'Slashed'
               : agent.status === 'working'

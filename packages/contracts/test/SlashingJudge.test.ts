@@ -35,7 +35,11 @@ describe('SlashingJudge', () => {
     vault = await Vault.deploy();
 
     const Escrow = await ethers.getContractFactory('TaskEscrow');
-    escrow = await Escrow.deploy(engine.address, await vault.getAddress(), await registry.getAddress());
+    escrow = await Escrow.deploy(
+      engine.address,
+      await vault.getAddress(),
+      await registry.getAddress(),
+    );
 
     await vault.setEscrowContract(await escrow.getAddress());
     await vault.fundTreasury({ value: ethers.parseEther('10.0') });
@@ -58,10 +62,16 @@ describe('SlashingJudge', () => {
     await judge.addAuthorizedCaller(engine.address);
 
     // Register Agents
-    await inftMock.connect(agent1).mintAgent(agent1.address, "uri", ethers.ZeroHash, "0x", { value: ethers.parseEther("0.001") });
-    await inftMock.connect(agent2).mintAgent(agent2.address, "uri", ethers.ZeroHash, "0x", { value: ethers.parseEther("0.001") });
-    await inftMock.connect(agent3).mintAgent(agent3.address, "uri", ethers.ZeroHash, "0x", { value: ethers.parseEther("0.001") });
-    
+    await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, '0x', {
+      value: ethers.parseEther('0.001'),
+    });
+    await inftMock.connect(agent2).mintAgent(agent2.address, 'uri', ethers.ZeroHash, '0x', {
+      value: ethers.parseEther('0.001'),
+    });
+    await inftMock.connect(agent3).mintAgent(agent3.address, 'uri', ethers.ZeroHash, '0x', {
+      value: ethers.parseEther('0.001'),
+    });
+
     await registry.connect(agent1).registerNativeAgent(agent1.address, 1, ethers.ZeroHash, []);
     await registry.connect(agent2).registerNativeAgent(agent2.address, 2, ethers.ZeroHash, []);
     await registry.connect(agent3).registerNativeAgent(agent3.address, 3, ethers.ZeroHash, []);
@@ -71,9 +81,11 @@ describe('SlashingJudge', () => {
     beforeEach(async () => {
       // Mock an Escrow state
       // Provide value natively instead of via an unconnected signers object to bypass postTask
-      await escrow.connect(owner).postTask(3600000000, ethers.encodeBytes32String('hash'), 'uri', false, {
-        value: ethers.parseEther('3.0'),
-      });
+      await escrow
+        .connect(owner)
+        .postTask(3600000000, ethers.encodeBytes32String('hash'), 'uri', false, {
+          value: ethers.parseEther('3.0'),
+        });
       await vault.connect(agent1).deposit({ value: ethers.parseEther('1.0') });
       await vault.connect(agent2).deposit({ value: ethers.parseEther('1.0') });
       await vault.connect(agent3).deposit({ value: ethers.parseEther('1.0') });
@@ -83,7 +95,7 @@ describe('SlashingJudge', () => {
         .assignAgents(
           0,
           [agent1.address, agent2.address, agent3.address],
-          [ethers.parseEther('0.1'), ethers.parseEther('0.1'), ethers.parseEther('0.1')]
+          [ethers.parseEther('0.1'), ethers.parseEther('0.1'), ethers.parseEther('0.1')],
         );
 
       // Force internal state to allow resolve

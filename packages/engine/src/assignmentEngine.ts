@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ethers } from 'ethers';
 import { StorageService } from './services/storageService';
 import { ComputeService } from './services/computeService';
@@ -12,6 +11,16 @@ import { PipelineCoordinator } from './pipelineCoordinator';
 import AgentRegistryABI from '../../contracts/artifacts/contracts/AgentRegistry.sol/AgentRegistry.json';
 import TaskEscrowABI from '../../contracts/artifacts/contracts/TaskEscrow.sol/TaskEscrow.json';
 import SlashingJudgeABI from '../../contracts/artifacts/contracts/SlashingJudge.sol/SlashingJudge.json';
+
+interface ScoredAgent {
+  address: string;
+  score: number;
+  trustScore: number;
+  trustTier: bigint;
+  minStakeRequired: bigint;
+  capabilities: string[];
+  history: AgentHistory;
+}
 
 export class AssignmentEngine {
   private provider: ethers.JsonRpcProvider;
@@ -64,9 +73,12 @@ export class AssignmentEngine {
     });
 
     // 2. Listen for sequential pipeline handoffs
-    this.escrowContract.on('PipelineAdvanced', (taskId: bigint, stage: number, nextAgent: string) => {
-      void this.pipelineCoordinator.triggerNextStage(taskId.toString(), Number(stage), nextAgent);
-    });
+    this.escrowContract.on(
+      'PipelineAdvanced',
+      (taskId: bigint, stage: number, nextAgent: string) => {
+        void this.pipelineCoordinator.triggerNextStage(taskId.toString(), Number(stage), nextAgent);
+      },
+    );
 
     // 3. Listen for judge commits to update the cost tracker
     this.judgeContract.on('TaskJudged', (taskId: bigint) => {
@@ -111,7 +123,7 @@ export class AssignmentEngine {
 
       // 5. Calculate required stakes (Dynamic Risk-Adjusted)
       // Base stake is 10% of task payment for Elite, scaled up for lower trust
-      const baseStakePerAgent = BigInt(totalPayment) / BigInt(requiredCaps.length) / 10n; 
+      const baseStakePerAgent = BigInt(totalPayment) / BigInt(requiredCaps.length) / 10n;
       const stakes = selected.map((a) => {
         return this.trustScorer.calculateRequiredStake(a.history, baseStakePerAgent);
       });
@@ -122,7 +134,7 @@ export class AssignmentEngine {
       const tx = await this.escrowContract.assignAgents(
         taskId,
         selected.map((a) => a.address),
-        stakes
+        stakes,
       );
       await tx.wait();
 
@@ -132,45 +144,50 @@ export class AssignmentEngine {
     }
   }
 
-  private async scoreAgents(agentAddresses: string[], taskPayment: bigint) {
+  private async scoreAgents(agentAddresses: string[], taskPayment: bigint): Promise<ScoredAgent[]> {
     const beginnerThreshold = ethers.parseEther('0.005'); // 0.005 OG rehabilitation threshold
 
     const results = await Promise.all(
       agentAddresses.map(async (address) => {
         const agentData = await this.registryContract.getAgent(address);
-        
+
         let history: AgentHistory;
         const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
-        
-        if (agentData.historyRootHash === zeroHash || agentData.historyRootHash === ethers.ZeroHash) {
-            history = {
-                agentId: address,
-                inftTokenId: Number(agentData.inftTokenId),
-                agentClass: agentData.agentClass === 0 ? 'NATIVE' : 'EXTERNAL',
-                version: 1,
-                updatedAt: Math.floor(Date.now() / 1000),
-                totalTasks: 0,
-                completedHonestly: 0,
-                totalSlashEvents: 0,
-                totalDisputes: 0,
-                recentWindow: [],
-                avgResponseTimeMs: 0,
-                taskHistory: []
-            };
+
+        if (
+          agentData.historyRootHash === zeroHash ||
+          agentData.historyRootHash === ethers.ZeroHash
+        ) {
+          history = {
+            agentId: address,
+            inftTokenId: Number(agentData.inftTokenId),
+            agentClass: agentData.agentClass === 0 ? 'NATIVE' : 'EXTERNAL',
+            version: 1,
+            updatedAt: Math.floor(Date.now() / 1000),
+            totalTasks: 0,
+            completedHonestly: 0,
+            totalSlashEvents: 0,
+            totalDisputes: 0,
+            recentWindow: [],
+            avgResponseTimeMs: 0,
+            taskHistory: [],
+          };
         } else {
-            history = await this.storageService.downloadHistory(agentData.historyRootHash);
+          history = await this.storageService.downloadHistory(agentData.historyRootHash);
         }
-        
+
         // Tit-for-Tat rehabilitation redirect
         const coops = this.trustScorer.shouldCooperate(history);
         if (!coops && taskPayment > beginnerThreshold) {
-            return null; // Excluded from high-value tasks due to recent defection
+          return null; // Excluded from high-value tasks due to recent defection
         }
 
         const trustScore = this.trustScorer.calculateScore(history);
-        const speedScore = history.avgResponseTimeMs ? Math.min(1, 5000 / history.avgResponseTimeMs) : 0.8;
+        const speedScore = history.avgResponseTimeMs
+          ? Math.min(1, 5000 / history.avgResponseTimeMs)
+          : 0.8;
         const multiplier = this.trustScorer.getStakeMultiplier(trustScore, history.agentClass);
-        const costScore = 1 / multiplier; 
+        const costScore = 1 / multiplier;
 
         const compositeScore = trustScore * speedScore * costScore;
 
@@ -185,10 +202,10 @@ export class AssignmentEngine {
         };
       }),
     );
-    return results.filter(r => r !== null) as any[];
+    return results.filter((r): r is ScoredAgent => r !== null);
   }
 
-  private selectBestAgents(scored: any[], requiredCaps: string[], _taskPayment: bigint) {
+  private selectBestAgents(scored: ScoredAgent[], requiredCaps: string[], _taskPayment: bigint) {
     // Meritocratic Sorting: Prioritize capacity first, then composite merit score
     const sorted = scored.sort((a, b) => {
       const aMatchCount = a.capabilities.filter((c: string) => requiredCaps.includes(c)).length;
@@ -197,7 +214,7 @@ export class AssignmentEngine {
       return b.score - a.score;
     });
 
-    const selected: any[] = [];
+    const selected: ScoredAgent[] = [];
     const coveredCaps = new Set<string>();
 
     for (const agent of sorted) {
@@ -227,38 +244,46 @@ export class AssignmentEngine {
       const newBehaviorData: bigint[] = [];
 
       // 1. Verify all outputs first to get total passing count
-      const verificationResults = await Promise.all(agents.map(async (agentAddress) => {
+      const verificationResults = await Promise.all(
+        agents.map(async (agentAddress) => {
           const agentData = await this.registryContract.getAgent(agentAddress);
           const outputCID = await this.escrowContract.agentOutputHashes(taskId, agentAddress);
-          
-          let actualContent = "";
+
+          let actualContent = '';
           try {
-              if (outputCID && outputCID !== "") {
-                  const download = await this.storageService.downloadHistory(outputCID);
-                  actualContent = typeof download === 'string' ? download : JSON.stringify(download);
-              }
+            if (outputCID && outputCID !== '') {
+              const download = await this.storageService.downloadHistory(outputCID);
+              actualContent = typeof download === 'string' ? download : JSON.stringify(download);
+            }
           } catch (err) {
-              logger.error({ err, outputCID }, `Failed to download output from 0G Storage`);
+            logger.error({ err, outputCID }, `Failed to download output from 0G Storage`);
           }
 
-          if (agentData.agentClass === 1) { // EXTERNAL
-              if (!outputCID || outputCID === '' || actualContent === '' || actualContent === 'EMPTY_OUTPUT_FAILURE') {
-                  actualContent = 'HASH_INTEGRITY_FAILURE';
-              }
+          if (agentData.agentClass === 1) {
+            // EXTERNAL
+            if (
+              !outputCID ||
+              outputCID === '' ||
+              actualContent === '' ||
+              actualContent === 'EMPTY_OUTPUT_FAILURE'
+            ) {
+              actualContent = 'HASH_INTEGRITY_FAILURE';
+            }
           }
 
           const passed = await this.criteriaChecker.verifyCriteria(
-              agentAddress,
-              taskId,
-              criteria.criteria,
-              actualContent || 'EMPTY_OUTPUT_FAILURE',
+            agentAddress,
+            taskId,
+            criteria.criteria,
+            actualContent || 'EMPTY_OUTPUT_FAILURE',
           );
 
           return { agentAddress, agentData, outputCID, passed };
-      }));
+        }),
+      );
 
-      const passingCount = verificationResults.filter(v => v.passed).length;
-      criteriaResults.push(...verificationResults.map(v => v.passed));
+      const passingCount = verificationResults.filter((v) => v.passed).length;
+      criteriaResults.push(...verificationResults.map((v) => v.passed));
 
       // 2. Perform history updates and behavioral data aggregation
       for (const res of verificationResults) {
@@ -266,26 +291,29 @@ export class AssignmentEngine {
 
         let currentHistoryHash: string;
         const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
-        
-        if (agentData.historyRootHash === zeroHash || agentData.historyRootHash === ethers.ZeroHash) {
-            const emptyHistory: AgentHistory = {
-                agentId: agentAddress,
-                inftTokenId: Number(agentData.inftTokenId),
-                agentClass: agentData.agentClass === 0 ? 'NATIVE' : 'EXTERNAL',
-                version: 1,
-                updatedAt: Math.floor(Date.now() / 1000),
-                totalTasks: 0,
-                completedHonestly: 0,
-                totalSlashEvents: 0,
-                totalDisputes: 0,
-                recentWindow: [],
-                avgResponseTimeMs: 0,
-                taskHistory: []
-            };
-            const { bytes32Hash } = await this.storageService.uploadHistory(emptyHistory);
-            currentHistoryHash = bytes32Hash;
+
+        if (
+          agentData.historyRootHash === zeroHash ||
+          agentData.historyRootHash === ethers.ZeroHash
+        ) {
+          const emptyHistory: AgentHistory = {
+            agentId: agentAddress,
+            inftTokenId: Number(agentData.inftTokenId),
+            agentClass: agentData.agentClass === 0 ? 'NATIVE' : 'EXTERNAL',
+            version: 1,
+            updatedAt: Math.floor(Date.now() / 1000),
+            totalTasks: 0,
+            completedHonestly: 0,
+            totalSlashEvents: 0,
+            totalDisputes: 0,
+            recentWindow: [],
+            avgResponseTimeMs: 0,
+            taskHistory: [],
+          };
+          const { bytes32Hash } = await this.storageService.uploadHistory(emptyHistory);
+          currentHistoryHash = bytes32Hash;
         } else {
-            currentHistoryHash = agentData.historyRootHash;
+          currentHistoryHash = agentData.historyRootHash;
         }
 
         const { newHash, updatedHistory } = await this.storageService.updateAgentHistory(
@@ -295,7 +323,9 @@ export class AssignmentEngine {
             passed,
             collaborators: agents.filter((a: string) => a !== agentAddress),
             outputHash: outputCID || '',
-            paymentReceived: passed ? (BigInt(totalPayment) / BigInt(passingCount || 1)).toString() : '0',
+            paymentReceived: passed
+              ? (BigInt(totalPayment) / BigInt(passingCount || 1)).toString()
+              : '0',
           },
         );
         newHistoryHashes.push(newHash);
@@ -303,7 +333,9 @@ export class AssignmentEngine {
         newBehaviorData.push(
           BigInt(updatedHistory.totalTasks),
           BigInt(updatedHistory.completedHonestly),
-          BigInt((updatedHistory.recentWindow as any[]).reduce((a: number, b: number) => a + b, 0)),
+          BigInt(
+            (updatedHistory.recentWindow as number[]).reduce((a: number, b: number) => a + b, 0),
+          ),
           BigInt(updatedHistory.totalSlashEvents),
         );
       }

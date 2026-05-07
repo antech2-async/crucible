@@ -31,13 +31,20 @@ export class StorageProvider {
    */
   public async commit(content: string): Promise<{ hash: string; uri: string }> {
     const hash = ethers.keccak256(ethers.toUtf8Bytes(content));
-    const uri = hash; // The hash is the primary identifier (CID logic)
-    
+    return this.commitWithHash(hash, content);
+  }
+
+  /**
+   * Commits content to the 'decentralized' storage using a specific hash/URI.
+   */
+  public async commitWithHash(hash: string, content: string): Promise<{ hash: string; uri: string }> {
+    const uri = hash;
+
     // Index it to filesystem
     const data = JSON.parse(fs.readFileSync(this.storagePath, 'utf8'));
     data[uri] = content;
     fs.writeFileSync(this.storagePath, JSON.stringify(data));
-    
+
     return { hash, uri };
   }
 
@@ -49,7 +56,7 @@ export class StorageProvider {
     const content = data[uri];
     if (!content) {
       console.warn(`StorageProvider: URI ${uri} not found in mock index.`);
-      return "SIMULATED_CONTENT: Data retrieval in progress...";
+      return 'SIMULATED_CONTENT: Data retrieval in progress...';
     }
     return content;
   }

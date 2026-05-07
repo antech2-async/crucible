@@ -56,7 +56,7 @@ async function mintAgent(agentName: string, capabilities: string[], privateKey: 
     await signer.getAddress(),
     encryptedURI,
     metadataHash,
-    "0x",
+    '0x',
     { value: ethers.parseEther('0.001') },
   );
 

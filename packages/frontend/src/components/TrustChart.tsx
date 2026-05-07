@@ -31,8 +31,8 @@ export default function TrustChart({ data }: TrustChartProps) {
           Bayesian Trajectory Analysis
         </h3>
         <div className="flex gap-4">
-          <LegendItem label="Trust Score"       color={GOLD}     />
-          <LegendItem label="Stake Multiplier"  color={GOLD_DIM} dim />
+          <LegendItem label="Trust Score" color={GOLD} />
+          <LegendItem label="Stake Multiplier" color={GOLD_DIM} dim />
         </div>
       </div>
 
@@ -40,12 +40,12 @@ export default function TrustChart({ data }: TrustChartProps) {
         <AreaChart data={data} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
           <defs>
             <linearGradient id="colorTrust" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%"  stopColor={GOLD}     stopOpacity={0.25} />
-              <stop offset="95%" stopColor={GOLD}     stopOpacity={0}    />
+              <stop offset="5%" stopColor={GOLD} stopOpacity={0.25} />
+              <stop offset="95%" stopColor={GOLD} stopOpacity={0} />
             </linearGradient>
             <linearGradient id="colorMulti" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%"  stopColor={GOLD_DIM} stopOpacity={0.08} />
-              <stop offset="95%" stopColor={GOLD_DIM} stopOpacity={0}    />
+              <stop offset="5%" stopColor={GOLD_DIM} stopOpacity={0.08} />
+              <stop offset="95%" stopColor={GOLD_DIM} stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="2 4" stroke="#2a2825" vertical={false} />
@@ -85,7 +85,9 @@ function LegendItem({ label, color, dim }: { label: string; color: string; dim?:
   return (
     <div className="flex items-center gap-1.5">
       <div className="w-2 h-px" style={{ backgroundColor: color, opacity: dim ? 0.5 : 1 }} />
-      <span className="text-[9px] font-mono uppercase tracking-widest text-on-surface-dim">{label}</span>
+      <span className="text-[9px] font-mono uppercase tracking-widest text-on-surface-dim">
+        {label}
+      </span>
     </div>
   );
 }

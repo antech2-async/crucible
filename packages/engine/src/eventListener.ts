@@ -20,7 +20,7 @@ export class EventListener {
       this.provider,
     );
     this.assignmentEngine = new AssignmentEngine();
-    
+
     const signer = new ethers.Wallet(process.env.PRIVATE_KEY!, this.provider);
     this.pipelineCoordinator = new PipelineCoordinator(this.provider, signer);
   }
@@ -43,11 +43,7 @@ export class EventListener {
         { taskId: taskId.toString(), stage: Number(stage), nextAgent },
         'Pipeline advanced! Triggering next swarm stage...',
       );
-      await this.pipelineCoordinator.triggerNextStage(
-        taskId.toString(),
-        Number(stage),
-        nextAgent,
-      );
+      await this.pipelineCoordinator.triggerNextStage(taskId.toString(), Number(stage), nextAgent);
     });
 
     // Note: In a production scenario we might listen for OutputSubmitted and track state,

@@ -25,12 +25,16 @@ describe('TaskEscrow', () => {
     const Registry = await ethers.getContractFactory('AgentRegistry');
     registry = await Registry.deploy();
     await registry.setINFTContract(await inftMock.getAddress());
-    
+
     const Vault = await ethers.getContractFactory('AgentStakeVault');
     vault = await Vault.deploy();
 
     const TaskEscrowFactory = await ethers.getContractFactory('TaskEscrow');
-    escrow = await TaskEscrowFactory.deploy(assignmentEngine.address, await vault.getAddress(), await registry.getAddress());
+    escrow = await TaskEscrowFactory.deploy(
+      assignmentEngine.address,
+      await vault.getAddress(),
+      await registry.getAddress(),
+    );
 
     await vault.setEscrowContract(await escrow.getAddress());
     await escrow.setSlashingJudge(slashingJudge.address);
@@ -39,11 +43,19 @@ describe('TaskEscrow', () => {
     await vault.fundTreasury({ value: ethers.parseEther('10.0') });
 
     // Initial Registration for Agents
-    await inftMock.connect(agent1).mintAgent(agent1.address, "uri1", ethers.ZeroHash, "0x", { value: ethers.parseEther("0.001") });
-    await inftMock.connect(agent2).mintAgent(agent2.address, "uri2", ethers.ZeroHash, "0x", { value: ethers.parseEther("0.001") });
-    
-    await registry.connect(agent1).registerNativeAgent(agent1.address, 1, ethers.ZeroHash, ['research']);
-    await registry.connect(agent2).registerNativeAgent(agent2.address, 2, ethers.ZeroHash, ['writing']);
+    await inftMock.connect(agent1).mintAgent(agent1.address, 'uri1', ethers.ZeroHash, '0x', {
+      value: ethers.parseEther('0.001'),
+    });
+    await inftMock.connect(agent2).mintAgent(agent2.address, 'uri2', ethers.ZeroHash, '0x', {
+      value: ethers.parseEther('0.001'),
+    });
+
+    await registry
+      .connect(agent1)
+      .registerNativeAgent(agent1.address, 1, ethers.ZeroHash, ['research']);
+    await registry
+      .connect(agent2)
+      .registerNativeAgent(agent2.address, 2, ethers.ZeroHash, ['writing']);
   });
 
   describe('postTask', () => {
@@ -121,7 +133,7 @@ describe('TaskEscrow', () => {
         .assignAgents(
           0,
           [agent1.address, agent2.address],
-          [ethers.parseEther('0.1'), ethers.parseEther('0.1')]
+          [ethers.parseEther('0.1'), ethers.parseEther('0.1')],
         );
     });
 
@@ -141,9 +153,11 @@ describe('TaskEscrow', () => {
 
   describe('Resolve Tasks', () => {
     beforeEach(async () => {
-      await escrow.connect(poster).postTask(3600000000, ethers.encodeBytes32String('hash'), 'uri', false, {
-        value: ethers.parseEther('1.0'),
-      });
+      await escrow
+        .connect(poster)
+        .postTask(3600000000, ethers.encodeBytes32String('hash'), 'uri', false, {
+          value: ethers.parseEther('1.0'),
+        });
       await vault.connect(agent1).deposit({ value: ethers.parseEther('1.0') });
       await escrow
         .connect(assignmentEngine)
@@ -156,14 +170,14 @@ describe('TaskEscrow', () => {
 
       const pending = await escrow.pendingPayments(0, agent1.address);
       expect(pending).to.equal(ethers.parseEther('1.0'));
-      
+
       const task = await escrow.tasks(0);
       expect(task.status).to.equal(4); // COMPLETED
-      
+
       // Verification of claim
       await ethers.provider.send('evm_increaseTime', [86401]);
       await ethers.provider.send('evm_mine', []);
-      
+
       const balBefore = await ethers.provider.getBalance(agent1.address);
       await escrow.connect(agent1).claimPayment(0);
       const balAfter = await ethers.provider.getBalance(agent1.address);
@@ -171,9 +185,10 @@ describe('TaskEscrow', () => {
     });
 
     it('slashes agent and resolves', async () => {
-      await expect(
-        escrow.connect(slashingJudge).resolveTask(0, [false], [0]),
-      ).to.emit(escrow, 'AgentSlashed');
+      await expect(escrow.connect(slashingJudge).resolveTask(0, [false], [0])).to.emit(
+        escrow,
+        'AgentSlashed',
+      );
 
       const task = await escrow.tasks(0);
       expect(task.status).to.equal(7); // FAILED (all agents failed)
@@ -183,10 +198,12 @@ describe('TaskEscrow', () => {
   describe('failConsensus (Deadline Trap)', () => {
     beforeEach(async () => {
       // Set deadline in the past for this test
-      const blockNow = await ethers.provider.getBlock('latest').then(b => b!.timestamp);
-      await escrow.connect(poster).postTask(blockNow + 100, ethers.encodeBytes32String('hash'), 'uri', false, {
-        value: ethers.parseEther('1.0'),
-      });
+      const blockNow = await ethers.provider.getBlock('latest').then((b) => b!.timestamp);
+      await escrow
+        .connect(poster)
+        .postTask(blockNow + 100, ethers.encodeBytes32String('hash'), 'uri', false, {
+          value: ethers.parseEther('1.0'),
+        });
       await vault.connect(agent1).deposit({ value: ethers.parseEther('1.0') });
       await escrow
         .connect(assignmentEngine)

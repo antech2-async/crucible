@@ -4,14 +4,14 @@ import path from 'path';
 async function auditApp() {
   const browser = await chromium.launch();
   const page = await browser.newPage();
-  
+
   const consoleErrors: string[] = [];
-  page.on('console', msg => {
+  page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
   });
 
   const failedRequests: string[] = [];
-  page.on('requestfailed', request => {
+  page.on('requestfailed', (request) => {
     failedRequests.push(`${request.url()}: ${request.failure()?.errorText}`);
   });
 

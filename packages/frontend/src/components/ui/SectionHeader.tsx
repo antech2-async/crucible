@@ -18,9 +18,7 @@ export function SectionHeader({ title, subtitle, action, className }: SectionHea
           <h2 className="text-sm font-display font-bold uppercase tracking-widest text-on-surface">
             {title}
           </h2>
-          {subtitle && (
-            <p className="text-xs font-mono text-on-surface-muted mt-0.5">{subtitle}</p>
-          )}
+          {subtitle && <p className="text-xs font-mono text-on-surface-muted mt-0.5">{subtitle}</p>}
         </div>
       </div>
       {action && <div className="flex-shrink-0">{action}</div>}

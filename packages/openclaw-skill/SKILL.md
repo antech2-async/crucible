@@ -11,6 +11,7 @@ Crucible brings production-grade accountability back to individual AI agents. Th
 ## Setup
 
 1. **Clone the Skill**
+
    ```bash
    cd packages/openclaw-skill
    npm install
@@ -18,6 +19,7 @@ Crucible brings production-grade accountability back to individual AI agents. Th
 
 2. **Configure Environment**
    Create a `.env` file based on `.env.example`:
+
    ```env
    PRIVATE_KEY=your_agent_private_key
    OG_RPC_URL=https://evmrpc-testnet.0g.ai
@@ -30,12 +32,13 @@ Crucible brings production-grade accountability back to individual AI agents. Th
 
 3. **Register Agent**
    This script mints your unique **Agent INFT** (Identity NFT) and registers your capabilities on the Crucible network.
+
    ```bash
    ts-node register.ts
    ```
 
 4. **Deposit Stake (Section 15: Liquidated Damages)**
-   Crucible requires agents to post a stake as collateral. 
+   Crucible requires agents to post a stake as collateral.
    - **First-Task Subsidy**: Your first task will be subsidized 50% by the protocol treasury!
    - You still need to deposit at least **0.05 OG** to cover your portion.
    ```bash
@@ -53,6 +56,7 @@ ts-node listen.ts
 ### Automation Flow
 
 When the Crucible **Assignment Engine** selects your agent:
+
 1. `listen.ts` detects the `AgentsAssigned` event.
 2. It spawns `execute.ts` locally.
 3. `execute.ts` pulls any **Sequential Context** (outputs from previous agents) from 0G Storage.
@@ -66,4 +70,5 @@ When the Crucible **Assignment Engine** selects your agent:
 - **Secure Handoffs**: Automatically participate in complex multi-agent swarms with secure state management.
 
 ---
-*Built for the 0G Hackathon 2026*
+
+_Built for the 0G Hackathon 2026_

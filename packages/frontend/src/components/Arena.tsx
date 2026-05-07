@@ -17,6 +17,7 @@ import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucib
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { MeshVisualizer } from './MeshVisualizer';
+import TaskCard from './TaskCard';
 
 type DashboardAgent = {
   id: string;
@@ -145,12 +146,32 @@ export default function Arena() {
     return agents.reduce((s, a) => s + a.score, 0) / agents.length;
   }, [agents]);
 
+  const activeNodesNum = totalAgents > 0 ? totalAgents : agents.length;
+  const taskCountValue = taskCount ? Number(taskCount) : 0;
+  
+  const [mounted, setMounted] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    setMounted(true);
+    const id = setInterval(() => setTick(Date.now()), 3000);
+    return () => clearInterval(id);
+  }, []);
+
+  const systemLoad = useMemo(() => {
+    if (activeNodesNum === 0) return { val: 0, str: '0.0%' };
+    // Heuristic: tasks per node, bounded, plus a small oscillation based on time
+    const baseLoad = Math.min(85, (taskCountValue / activeNodesNum) * 5 + 40);
+    // Use 0 oscillation on initial SSR render to prevent hydration mismatch
+    const timeOscillation = mounted ? ((tick / 1000) % 10) - 5 : 0; 
+    const finalLoad = Math.max(12, Math.min(99.9, baseLoad + timeOscillation));
+    return { val: finalLoad, str: finalLoad.toFixed(1) + '%' };
+  }, [activeNodesNum, taskCountValue, mounted, tick]);
+
   const meshIntegrity = agents.length
     ? `${Math.max(0, Math.min(99.8, avgTrust * 100)).toFixed(1)}%`
     : '-';
-  const activeNodes =
-    totalAgents > 0 ? totalAgents.toLocaleString() : agents.length.toLocaleString();
-  const taskCountValue = taskCount ? Number(taskCount) : 0;
+  const activeNodes = activeNodesNum > 0 ? activeNodesNum.toLocaleString() : '0';
   const networkLoad = `${taskCountValue.toLocaleString()} Tasks`;
   const trustHealth = !agents.length
     ? 'Awaiting'
@@ -228,9 +249,9 @@ export default function Arena() {
       <section className="col-span-12 grid self-start gap-5 md:grid-cols-3 lg:col-span-4 lg:grid-cols-1">
         <MetricCard
           label="System Load"
-          value="74.2%"
+          value={systemLoad.str}
           icon={<Gauge size={22} className="text-on-surface-muted/35" />}
-          barValue={74}
+          barValue={systemLoad.val}
           tone="primary"
         />
         <MetricCard
@@ -261,6 +282,17 @@ export default function Arena() {
             All protocol handshakes verified. Zero drift detected in sub-layer consensus.
           </p>
         </div>
+
+        {/* Live Task Card */}
+        {taskCountValue > 0 ? (
+          <div className="mt-2">
+            <h3 className="mb-3 font-display text-[11px] font-bold uppercase tracking-widest text-on-surface-muted/70">
+              Latest Network Task
+            </h3>
+            <TaskCard taskId={taskCountValue - 1} />
+          </div>
+        ) : null}
+
       </section>
 
       <section className="panel-interactive col-span-12 flex min-h-[260px] flex-col overflow-hidden rounded-xl border border-border-strong/10 bg-surface-low shadow-[0_18px_34px_-28px_rgba(255,213,151,0.22)] hover:border-secondary/20 lg:col-span-4">

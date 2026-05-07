@@ -9,12 +9,12 @@ dotenv.config({ path: '../../../.env' });
  * is automatically slashed, and the poster is refunded.
  */
 async function main() {
-  const [deployer] = await ethers.getSigners();
+  const [_deployer] = await ethers.getSigners();
   const escrowAddress = process.env.ESCROW_ADDRESS || ethers.ZeroAddress;
   const vaultAddress = process.env.VAULT_ADDRESS || ethers.ZeroAddress;
   const registryAddress = process.env.REGISTRY_ADDRESS || ethers.ZeroAddress;
 
-  if (escrowAddress === ethers.ZeroAddress) throw new Error("Missing ESCROW_ADDRESS");
+  if (escrowAddress === ethers.ZeroAddress) throw new Error('Missing ESCROW_ADDRESS');
 
   const escrow = await ethers.getContractAt('TaskEscrow', escrowAddress);
   const vault = await ethers.getContractAt('AgentStakeVault', vaultAddress);
@@ -24,16 +24,24 @@ async function main() {
 
   // 1. Post a task with a very short deadline (e.g. 5 seconds)
   const payment = ethers.parseEther('0.0001');
-  const deadline = Math.floor(Date.now() / 1000) + 5; 
-  
+  const deadline = Math.floor(Date.now() / 1000) + 5;
+
   console.log(`[1] Posting Task with 5-second deadline... (Payment: 0.0001 OG)`);
-  let tx = await escrow.postTask(deadline, ethers.ZeroHash, '0g://test-criteria', false, { value: payment });
-  let receipt = await tx.wait();
-  
+  let tx = await escrow.postTask(deadline, ethers.ZeroHash, '0g://test-criteria', false, {
+    value: payment,
+  });
+  const receipt = await tx.wait();
+
   // Parse task ID from events
-  const taskId = receipt!.logs.map(log => {
-      try { return escrow.interface.parseLog(log); } catch { return null; }
-  }).find(l => l?.name === 'TaskPosted')?.args[0];
+  const taskId = receipt!.logs
+    .map((log) => {
+      try {
+        return escrow.interface.parseLog(log);
+      } catch {
+        return null;
+      }
+    })
+    .find((l) => l?.name === 'TaskPosted')?.args[0];
 
   console.log(`    Task ID: ${taskId} created.`);
 
@@ -43,8 +51,6 @@ async function main() {
   const stakeAmount = ethers.parseEther('0.001');
 
   // Check Bob's initial deposit
-  const initialDeposit = await vault.deposits(deployer.address); // For simplicity, deployer owns Bob in this test run if not using detached wallets. 
-  // Wait, in seed-network we generated isolated wallets. 
   // To get Bob's owner, we read the registry:
   const bobAgent = await registry.getAgent(bobAddress);
   const bobOwner = bobAgent.owner;
@@ -56,7 +62,7 @@ async function main() {
 
   // 3. Wait for deadline to expire natively
   console.log(`[3] Simulating Bob going offline. Waiting 6 seconds for deadline to expire...`);
-  await new Promise(r => setTimeout(r, 6000));
+  await new Promise((r) => setTimeout(r, 6000));
 
   // 4. Third-party invokes failExpiredTask
   console.log(`[4] Invoking failExpiredTask()...`);
@@ -71,11 +77,11 @@ async function main() {
   console.log(`Task Status (Expected 7 = FAILED): ${taskState.status}`);
   console.log(`Bob's Initial Deposit: ${ethers.formatEther(initialBobDeposit)} OG`);
   console.log(`Bob's Final Deposit:   ${ethers.formatEther(finalBobDeposit)} OG`);
-  
+
   if (initialBobDeposit - finalBobDeposit === stakeAmount) {
-      console.log('✅ PASS: Bob was slashed exactly 0.001 OG for missing the deadline.');
+    console.log('✅ PASS: Bob was slashed exactly 0.001 OG for missing the deadline.');
   } else {
-      console.error('❌ FAIL: Slash amount mismatch!');
+    console.error('❌ FAIL: Slash amount mismatch!');
   }
 }
 

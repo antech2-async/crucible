@@ -1,7 +1,5 @@
 import { ethers } from 'ethers';
 import * as dotenv from 'dotenv';
-import * as fs from 'fs';
-import * as path from 'path';
 
 dotenv.config();
 
@@ -25,39 +23,37 @@ async function main() {
   // 1. Mint INFT
   // For the hackathon, we assume the INFT contract has a basic mint function
   const INFT_ABI = [
-    "function mintAgent(address to, string calldata encryptedURI, bytes32 metadataHash) external payable returns (uint256)",
-    "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
+    'function mintAgent(address to, string calldata encryptedURI, bytes32 metadataHash) external payable returns (uint256)',
+    'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
   ];
   const inftContract = new ethers.Contract(inftAddress, INFT_ABI, signer);
 
   console.log('Minting Agent INFT...');
-  const mintTx = await inftContract.mintAgent(
-    signer.address,
-    "placeholder_uri",
-    ethers.ZeroHash,
-    { value: ethers.parseEther("0.001") }
-  );
+  const mintTx = await inftContract.mintAgent(signer.address, 'placeholder_uri', ethers.ZeroHash, {
+    value: ethers.parseEther('0.001'),
+  });
   const receipt = await mintTx.wait();
-  
+
   // Extract tokenId from Transfer event
-  const transferEvent = receipt.logs.find((log: any) => 
-    log.topics[0] === ethers.id("Transfer(address,address,uint256)")
+  const transferEvent = receipt.logs.find(
+    (log: { topics: ReadonlyArray<string> }) =>
+      log.topics[0] === ethers.id('Transfer(address,address,uint256)'),
   );
   if (!transferEvent) {
-    throw new Error("Failed to find Transfer event in mint receipt");
+    throw new Error('Failed to find Transfer event in mint receipt');
   }
   const tokenId = ethers.toBigInt(transferEvent.topics[3]);
   console.log('Agent INFT minted. Token ID:', tokenId.toString());
 
   // 2. Register on AgentRegistry as EXTERNAL
   const REGISTRY_ABI = [
-    "function registerExternalAgent(address agentAddress, uint256 inftTokenId, bytes32 initialHistoryHash, string[] calldata capabilities, string calldata webhookEndpoint) external"
+    'function registerExternalAgent(address agentAddress, uint256 inftTokenId, bytes32 initialHistoryHash, string[] calldata capabilities, string calldata webhookEndpoint) external',
   ];
   const registryContract = new ethers.Contract(registryAddress, REGISTRY_ABI, signer);
 
-  const capabilities = (process.env.AGENT_CAPABILITIES || "research,writing").split(",");
+  const capabilities = (process.env.AGENT_CAPABILITIES || 'research,writing').split(',');
   const initialHistoryHash = ethers.ZeroHash; // placeholder for initial history in 0G storage
-  const endpoint = process.env.AGENT_ENDPOINT || "http://localhost:3000";
+  const endpoint = process.env.AGENT_ENDPOINT || 'http://localhost:3000';
 
   console.log('Registering on Crucible Registry as EXTERNAL class...');
   const registerTx = await registryContract.registerExternalAgent(
@@ -65,7 +61,7 @@ async function main() {
     tokenId,
     initialHistoryHash,
     capabilities,
-    endpoint
+    endpoint,
   );
   await registerTx.wait();
 

@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Gavel, AlertTriangle, ShieldCheck, History } from 'lucide-react';
-import { SectionHeader, Surface, Button, LabelStat } from '@/components/ui';
+import { Gavel, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { SectionHeader, Surface, Button } from '@/components/ui';
 
 export default function AdminHub() {
   const disputedTasks = [
@@ -56,7 +56,9 @@ export default function AdminHub() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted">Stake At Risk</p>
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted">
+                    Stake At Risk
+                  </p>
                   <p className="text-lg font-mono font-bold text-primary">{task.stake}</p>
                 </div>
               </div>
@@ -103,8 +105,18 @@ export default function AdminHub() {
             <SectionHeader title="Recent Judgments" className="mb-4" />
             <div className="space-y-0 divide-y divide-border">
               <HistoryItem label="TASK-871" status="Dismissed" time="1d ago" />
-              <HistoryItem label="TASK-865" status="Slashed" time="3d ago" statusClass="text-danger" />
-              <HistoryItem label="TASK-842" status="Slashed" time="5d ago" statusClass="text-danger" />
+              <HistoryItem
+                label="TASK-865"
+                status="Slashed"
+                time="3d ago"
+                statusClass="text-danger"
+              />
+              <HistoryItem
+                label="TASK-842"
+                status="Slashed"
+                time="5d ago"
+                statusClass="text-danger"
+              />
             </div>
           </Surface>
         </div>
@@ -113,16 +125,36 @@ export default function AdminHub() {
   );
 }
 
-function StatRow({ label, value, valueClass = 'text-on-surface' }: { label: string; value: string; valueClass?: string }) {
+function StatRow({
+  label,
+  value,
+  valueClass = 'text-on-surface',
+}: {
+  label: string;
+  value: string;
+  valueClass?: string;
+}) {
   return (
     <div className="flex justify-between items-center px-3 py-2.5 bg-surface-low">
-      <span className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted">{label}</span>
+      <span className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted">
+        {label}
+      </span>
       <span className={`text-sm font-mono font-bold tabular-nums ${valueClass}`}>{value}</span>
     </div>
   );
 }
 
-function HistoryItem({ label, status, time, statusClass = 'text-on-surface-muted' }: { label: string; status: string; time: string; statusClass?: string }) {
+function HistoryItem({
+  label,
+  status,
+  time,
+  statusClass = 'text-on-surface-muted',
+}: {
+  label: string;
+  status: string;
+  time: string;
+  statusClass?: string;
+}) {
   return (
     <div className="flex justify-between items-center py-2.5 text-[10px] font-mono">
       <div className="flex items-center gap-3">
