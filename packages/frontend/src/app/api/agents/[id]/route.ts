@@ -96,15 +96,38 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       }
     }
 
-    const lifetimeRate =
-      history.totalTasks > 0 ? history.completedHonestly / history.totalTasks : 0.5;
-    const recentRate =
-      history.recentWindow.length > 0
-        ? (history.recentWindow as number[]).reduce((a, b) => a + b, 0) /
-          history.recentWindow.length
-        : 0.5;
-    const score = recentRate * 0.6 + lifetimeRate * 0.4 - history.totalSlashEvents * 0.05;
-    const clampedScore = Math.max(0, Math.min(1, score));
+    let finalScore = 0;
+    if (history.recentWindow && history.recentWindow.length > 0) {
+      const lifetimeRate =
+        history.totalTasks > 0 ? history.completedHonestly / history.totalTasks : 1.0;
+      const recentRate =
+        history.recentWindow.length > 0
+          ? (history.recentWindow as number[]).reduce((a, b) => a + b, 0) /
+            history.recentWindow.length
+          : 1.0;
+
+      finalScore = recentRate * 0.6 + lifetimeRate * 0.4;
+      const slashPenalty = history.totalSlashEvents ? history.totalSlashEvents * 0.05 : 0;
+      finalScore = Math.max(0, Math.min(1, finalScore - slashPenalty));
+    } else {
+      const totalTasks = Number(agentData.totalTasksCompleted);
+      const totalSlashes = Number(agentData.totalSlashEvents);
+      const tier = Number(agentData.trustTier);
+
+      if (totalTasks < 3) {
+        finalScore = tier === 3 ? 1.0 : tier === 2 ? 0.75 : tier === 1 ? 0.5 : 0.0;
+      } else {
+        const honestEstimate = totalTasks - totalSlashes;
+        const base = honestEstimate / totalTasks;
+        finalScore = Math.max(0, Math.min(1, base - (totalSlashes * 0.05)));
+      }
+    }
+
+    if (Number(agentData.agentClass) !== 0) {
+      finalScore = Math.min(finalScore, 0.85);
+    }
+
+    const clampedScore = finalScore;
 
     const TIER_LABELS = ['Basic', 'Uncommon', 'Rare', 'Epic', 'Mythic'];
 

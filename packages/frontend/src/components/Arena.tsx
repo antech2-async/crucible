@@ -160,13 +160,9 @@ export default function Arena() {
 
   const systemLoad = useMemo(() => {
     if (activeNodesNum === 0) return { val: 0, str: '0.0%' };
-    // Heuristic: tasks per node, bounded, plus a small oscillation based on time
-    const baseLoad = Math.min(85, (taskCountValue / activeNodesNum) * 5 + 40);
-    // Use 0 oscillation on initial SSR render to prevent hydration mismatch
-    const timeOscillation = mounted ? ((tick / 1000) % 10) - 5 : 0; 
-    const finalLoad = Math.max(12, Math.min(99.9, baseLoad + timeOscillation));
-    return { val: finalLoad, str: finalLoad.toFixed(1) + '%' };
-  }, [activeNodesNum, taskCountValue, mounted, tick]);
+    const load = Math.max(0, Math.min(99.9, avgTrust * 100));
+    return { val: load, str: load.toFixed(1) + '%' };
+  }, [activeNodesNum, avgTrust]);
 
   const meshIntegrity = agents.length
     ? `${Math.max(0, Math.min(99.8, avgTrust * 100)).toFixed(1)}%`

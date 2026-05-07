@@ -129,7 +129,21 @@ export default function AgentDossier() {
 
       <SectionHeader title="Behavioral Log" />
       <div className="space-y-2">
-        {agent.window?.length > 0 ? (
+        {agent.taskHistory?.length > 0 ? (
+          agent.taskHistory
+            .slice()
+            .reverse()
+            .map((task: any, i: number) => (
+              <TimelineRow
+                key={i}
+                id={`Task #${task.taskId}`}
+                type={task.result === 1 ? 'Task Completed' : 'Task Failed'}
+                status={task.result === 1 ? 'Verified' : 'Slashed'}
+                impact={task.result === 1 ? '+Trust' : '-5.0% Trust'}
+                isWarning={task.result === 0}
+              />
+            ))
+        ) : agent.window?.length > 0 ? (
           agent.window
             .slice()
             .reverse()

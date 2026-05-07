@@ -81,7 +81,18 @@ const aliceHistory = {
   totalDisputes: 0,
   recentWindow: [1, 1, 1, 1, 1, 1, 1, 0, 1, 1], // 9/10 recent passes
   avgResponseTimeMs: 1240,
-  taskHistory: [], // keep empty for storage size
+  taskHistory: [
+    { taskId: 410, result: 1 },
+    { taskId: 412, result: 1 },
+    { taskId: 415, result: 1 },
+    { taskId: 420, result: 1 },
+    { taskId: 421, result: 1 },
+    { taskId: 425, result: 1 },
+    { taskId: 428, result: 1 },
+    { taskId: 430, result: 0 },
+    { taskId: 435, result: 1 },
+    { taskId: 440, result: 1 },
+  ],
   nonce: Math.random(),
 };
 
@@ -98,7 +109,18 @@ const bobHistory = {
   totalDisputes: 1,
   recentWindow: [1, 1, 0, 1, 1, 1, 1, 1, 0, 1], // 8/10 recent
   avgResponseTimeMs: 1890,
-  taskHistory: [],
+  taskHistory: [
+    { taskId: 301, result: 1 },
+    { taskId: 305, result: 1 },
+    { taskId: 310, result: 0 },
+    { taskId: 315, result: 1 },
+    { taskId: 318, result: 1 },
+    { taskId: 320, result: 1 },
+    { taskId: 322, result: 1 },
+    { taskId: 325, result: 1 },
+    { taskId: 330, result: 0 },
+    { taskId: 335, result: 1 },
+  ],
   nonce: Math.random(),
 };
 
@@ -115,7 +137,18 @@ const charlieHistory = {
   totalDisputes: 1,
   recentWindow: [1, 0, 1, 1, 0, 1, 0, 1, 1, 0], // 6/10 recent
   avgResponseTimeMs: 2400,
-  taskHistory: [],
+  taskHistory: [
+    { taskId: 201, result: 1 },
+    { taskId: 204, result: 0 },
+    { taskId: 208, result: 1 },
+    { taskId: 212, result: 1 },
+    { taskId: 215, result: 0 },
+    { taskId: 218, result: 1 },
+    { taskId: 220, result: 0 },
+    { taskId: 225, result: 1 },
+    { taskId: 230, result: 1 },
+    { taskId: 235, result: 0 },
+  ],
   nonce: Math.random(),
 };
 
@@ -132,7 +165,18 @@ const badBotHistory = {
   totalDisputes: 2,
   recentWindow: [0, 0, 1, 0, 0, 1, 0, 0, 0, 1], // 3/10 recent
   avgResponseTimeMs: 3200,
-  taskHistory: [],
+  taskHistory: [
+    { taskId: 101, result: 0 },
+    { taskId: 105, result: 0 },
+    { taskId: 110, result: 1 },
+    { taskId: 115, result: 0 },
+    { taskId: 120, result: 0 },
+    { taskId: 125, result: 1 },
+    { taskId: 130, result: 0 },
+    { taskId: 135, result: 0 },
+    { taskId: 140, result: 0 },
+    { taskId: 145, result: 1 },
+  ],
   nonce: Math.random(),
 };
 
