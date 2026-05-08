@@ -14,6 +14,7 @@
     "prepare": "husky install",
     "lint": "npm run lint:ts && npm run lint:sol",
     "lint:ts": "eslint packages --ext .ts,.tsx",
+    "lint:ts:fix": "eslint packages --ext .ts,.tsx --fix",
     "lint:sol": "solhint \"packages/contracts/contracts/**/*.sol\"",
     "format": "prettier --write \"packages/**/*.{ts,sol,md,json}\"",
     "test": "npm run test --workspaces",

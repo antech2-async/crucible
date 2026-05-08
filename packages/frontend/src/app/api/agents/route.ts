@@ -87,29 +87,29 @@ export async function GET() {
             }
 
             if (downloadedContent) {
-               try {
-                 const parsed = JSON.parse(downloadedContent);
-                 if (parsed.recentWindow && parsed.totalTasks !== undefined) {
-                   history = parsed;
-                 }
-               } catch (e) {
-                 // ignore parse errors
-               }
+              try {
+                const parsed = JSON.parse(downloadedContent);
+                if (parsed.recentWindow && parsed.totalTasks !== undefined) {
+                  history = parsed;
+                }
+              } catch (e) {
+                // ignore parse errors
+              }
             } else {
-               // Fallback to Local Mock Storage if indexer fails or throws
-               try {
-                 const content = await storage.fetch(agentData.historyRootHash);
-                 if (content && !content.startsWith('SIMULATED_CONTENT')) {
-                   const parsed = JSON.parse(content);
-                   if (parsed.recentWindow && parsed.totalTasks !== undefined) {
-                     history = parsed;
-                   }
-                 } else {
-                   console.debug('Indexer download failed, falling back to registry inference');
-                 }
-               } catch (e) {
-                 console.debug('Indexer download failed, falling back to registry inference');
-               }
+              // Fallback to Local Mock Storage if indexer fails or throws
+              try {
+                const content = await storage.fetch(agentData.historyRootHash);
+                if (content && !content.startsWith('SIMULATED_CONTENT')) {
+                  const parsed = JSON.parse(content);
+                  if (parsed.recentWindow && parsed.totalTasks !== undefined) {
+                    history = parsed;
+                  }
+                } else {
+                  console.debug('Indexer download failed, falling back to registry inference');
+                }
+              } catch (e) {
+                console.debug('Indexer download failed, falling back to registry inference');
+              }
             }
           }
 
@@ -128,14 +128,14 @@ export async function GET() {
             const slashPenalty = history.totalSlashEvents ? history.totalSlashEvents * 0.05 : 0;
             finalScore = Math.max(0, Math.min(1, finalScore - slashPenalty));
           } else {
-             // Basic inference from registry if no history
-             if (totalTasks < 3) {
-                finalScore = tier === 3 ? 1.0 : tier === 2 ? 0.75 : tier === 1 ? 0.5 : 0.0;
-             } else {
-                const honestEstimate = totalTasks - totalSlashes;
-                const base = honestEstimate / totalTasks;
-                finalScore = Math.max(0, Math.min(1, base - (totalSlashes * 0.05)));
-             }
+            // Basic inference from registry if no history
+            if (totalTasks < 3) {
+              finalScore = tier === 3 ? 1.0 : tier === 2 ? 0.75 : tier === 1 ? 0.5 : 0.0;
+            } else {
+              const honestEstimate = totalTasks - totalSlashes;
+              const base = honestEstimate / totalTasks;
+              finalScore = Math.max(0, Math.min(1, base - totalSlashes * 0.05));
+            }
           }
 
           // Cap external agents at 0.85 (Elite tier is native-only)

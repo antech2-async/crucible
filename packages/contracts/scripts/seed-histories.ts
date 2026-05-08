@@ -60,7 +60,6 @@ async function uploadHistory(
     } else if (uploadErr) {
       console.log('  Upload timed out or taking too long. Proceeding with Registry update...');
     }
-    
   } catch (err: any) {
     console.warn(`  Storage Upload Failed: ${err.message}. Proceeding to Registry update anyway.`);
   }

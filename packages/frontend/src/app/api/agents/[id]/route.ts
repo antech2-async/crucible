@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
-  
+
   const provider = new ethers.JsonRpcProvider(
     process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai',
   );
@@ -61,7 +61,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (agentData.historyRootHash !== ethers.ZeroHash) {
       let downloadedContent: string | null = null;
       try {
-        const tempPath = path.join(os.tmpdir(), `0g-temp-dossier-${agentData.historyRootHash}.json`);
+        const tempPath = path.join(
+          os.tmpdir(),
+          `0g-temp-dossier-${agentData.historyRootHash}.json`,
+        );
         const err = await indexer.download(agentData.historyRootHash, tempPath, false);
 
         if (!err && fs.existsSync(tempPath)) {
@@ -73,26 +76,26 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       }
 
       if (downloadedContent) {
-         try {
-           const parsed = JSON.parse(downloadedContent);
-           if (parsed.recentWindow && parsed.totalTasks !== undefined) {
-             history = parsed;
-           }
-         } catch (e) {
-           // ignore
-         }
+        try {
+          const parsed = JSON.parse(downloadedContent);
+          if (parsed.recentWindow && parsed.totalTasks !== undefined) {
+            history = parsed;
+          }
+        } catch (e) {
+          // ignore
+        }
       } else {
-         try {
-           const content = await storage.fetch(agentData.historyRootHash);
-           if (content && !content.startsWith('SIMULATED_CONTENT')) {
-             const parsed = JSON.parse(content);
-             if (parsed.recentWindow && parsed.totalTasks !== undefined) {
-               history = parsed;
-             }
-           }
-         } catch (e) {
-           // ignore
-         }
+        try {
+          const content = await storage.fetch(agentData.historyRootHash);
+          if (content && !content.startsWith('SIMULATED_CONTENT')) {
+            const parsed = JSON.parse(content);
+            if (parsed.recentWindow && parsed.totalTasks !== undefined) {
+              history = parsed;
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
       }
     }
 
@@ -119,7 +122,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       } else {
         const honestEstimate = totalTasks - totalSlashes;
         const base = honestEstimate / totalTasks;
-        finalScore = Math.max(0, Math.min(1, base - (totalSlashes * 0.05)));
+        finalScore = Math.max(0, Math.min(1, base - totalSlashes * 0.05));
       }
     }
 

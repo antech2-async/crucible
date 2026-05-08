@@ -15,9 +15,7 @@ export function ConnectWallet() {
   }, []);
 
   if (!mounted) {
-    return (
-      <div className="h-[38px] w-[130px] animate-pulse rounded-lg bg-primary/20" />
-    );
+    return <div className="h-[38px] w-[130px] animate-pulse rounded-lg bg-primary/20" />;
   }
 
   if (isConnected && address) {

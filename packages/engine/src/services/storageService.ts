@@ -42,7 +42,9 @@ export class StorageService {
 
     // If it's just a timeout, we proceed because the tx was likely sent and deduplicated
     if (uploadErr && !uploadErr.toString().includes('timeout')) {
-      console.error(`Storage Warning: Failed to submit to 0G Storage: ${uploadErr}. Proceeding with local hash.`);
+      console.error(
+        `Storage Warning: Failed to submit to 0G Storage: ${uploadErr}. Proceeding with local hash.`,
+      );
     } else if (uploadErr) {
       console.log('Upload timed out but transaction was likely broadcast. Proceeding...');
     }
@@ -70,7 +72,9 @@ export class StorageService {
 
     // If it's just a timeout, we proceed
     if (uploadErr && !uploadErr.toString().includes('timeout')) {
-      console.error(`Storage Warning: Failed to submit JSON to 0G Storage: ${uploadErr}. Proceeding with local hash.`);
+      console.error(
+        `Storage Warning: Failed to submit JSON to 0G Storage: ${uploadErr}. Proceeding with local hash.`,
+      );
     } else if (uploadErr) {
       console.log('Upload timed out but transaction was likely broadcast. Proceeding...');
     }

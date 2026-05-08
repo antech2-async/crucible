@@ -37,7 +37,10 @@ export class StorageProvider {
   /**
    * Commits content to the 'decentralized' storage using a specific hash/URI.
    */
-  public async commitWithHash(hash: string, content: string): Promise<{ hash: string; uri: string }> {
+  public async commitWithHash(
+    hash: string,
+    content: string,
+  ): Promise<{ hash: string; uri: string }> {
     const uri = hash;
 
     // Index it to filesystem

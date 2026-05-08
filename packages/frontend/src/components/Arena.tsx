@@ -148,15 +148,6 @@ export default function Arena() {
 
   const activeNodesNum = totalAgents > 0 ? totalAgents : agents.length;
   const taskCountValue = taskCount ? Number(taskCount) : 0;
-  
-  const [mounted, setMounted] = useState(false);
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    setMounted(true);
-    const id = setInterval(() => setTick(Date.now()), 3000);
-    return () => clearInterval(id);
-  }, []);
 
   const systemLoad = useMemo(() => {
     if (activeNodesNum === 0) return { val: 0, str: '0.0%' };
@@ -288,7 +279,6 @@ export default function Arena() {
             <TaskCard taskId={taskCountValue - 1} />
           </div>
         ) : null}
-
       </section>
 
       <section className="panel-interactive col-span-12 flex min-h-[260px] flex-col overflow-hidden rounded-xl border border-border-strong/10 bg-surface-low shadow-[0_18px_34px_-28px_rgba(255,213,151,0.22)] hover:border-secondary/20 lg:col-span-4">

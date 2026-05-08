@@ -8,7 +8,14 @@ import { CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucible/shared';
 import { ethers } from 'ethers';
 
 const STATUS_MAP = [
-  'OPEN', 'ASSIGNED', 'IN PIPELINE', 'VERIFYING', 'COMPLETED', 'PARTIAL', 'DISPUTED', 'FAILED'
+  'OPEN',
+  'ASSIGNED',
+  'IN PIPELINE',
+  'VERIFYING',
+  'COMPLETED',
+  'PARTIAL',
+  'DISPUTED',
+  'FAILED',
 ];
 
 export default function TaskCard({ taskId }: { taskId?: number }) {
@@ -33,11 +40,15 @@ export default function TaskCard({ taskId }: { taskId?: number }) {
             .then((data) => {
               if (data.criteria) setCriteria(data.criteria);
             })
-            .catch(() => {});
+            .catch(() => {
+              /* ignore */
+            });
         } else {
           setCriteria([{ name: 'TEE Proof', value: 'Valid', passed: true }]);
         }
-      } catch (e) {}
+      } catch (e) {
+        /* ignore */
+      }
     }
   }, [taskBasic]);
 
@@ -55,7 +66,7 @@ export default function TaskCard({ taskId }: { taskId?: number }) {
   const statusStr = STATUS_MAP[Number(basic[3])] || 'UNKNOWN';
   const payment = ethers.formatEther(basic[1]) + ' 0G';
   const shortPoster = `${basic[0].slice(0, 6)}...${basic[0].slice(-4)}`;
-  
+
   // Format deadline countdown
   const deadlineMs = Number(basic[2]) * 1000;
   const isExpired = Date.now() > deadlineMs;
@@ -66,7 +77,7 @@ export default function TaskCard({ taskId }: { taskId?: number }) {
 
   const fallbackCriteria = [
     { name: 'TEE Proof', value: 'Valid', passed: true },
-    { name: 'Word Count', value: '>= 500', passed: true }
+    { name: 'Word Count', value: '>= 500', passed: true },
   ];
   const displayCriteria = criteria.length > 0 ? criteria : fallbackCriteria;
 
@@ -102,14 +113,19 @@ export default function TaskCard({ taskId }: { taskId?: number }) {
           <div key={i} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {c.name === 'TEE Proof' || c.fieldName === 'TEE Proof' ? (
-                <Binary size={11} className={c.passed !== false ? 'text-success' : 'text-on-surface-dim'} />
+                <Binary
+                  size={11}
+                  className={c.passed !== false ? 'text-success' : 'text-on-surface-dim'}
+                />
               ) : (
                 <ShieldCheck
                   size={11}
                   className={c.passed !== false ? 'text-success' : 'text-on-surface-dim'}
                 />
               )}
-              <span className="text-[10px] font-mono text-on-surface-muted">{c.name || c.fieldName}</span>
+              <span className="text-[10px] font-mono text-on-surface-muted">
+                {c.name || c.fieldName}
+              </span>
             </div>
             <span className="text-[10px] font-mono font-bold text-on-surface bg-surface border border-border px-2 py-0.5">
               {c.value || c.expectedValue}
