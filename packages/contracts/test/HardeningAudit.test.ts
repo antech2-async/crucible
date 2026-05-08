@@ -47,7 +47,7 @@ describe('Hardening Audit', () => {
     await vault.fundTreasury({ value: ethers.parseEther('10.0') });
 
     // Register Agent 1 as NATIVE
-    await inftMock.connect(agent1).mintAgent(agent1.address, 'uri1', ethers.ZeroHash, '0x', {
+    await inftMock.connect(agent1).mintAgent(agent1.address, 'uri1', ethers.ZeroHash, {
       value: ethers.parseEther('0.001'),
     });
     await registry
@@ -55,7 +55,7 @@ describe('Hardening Audit', () => {
       .registerNativeAgent(agent1.address, 1, ethers.ZeroHash, ['research']);
 
     // Register Agent 2 as EXTERNAL
-    await inftMock.connect(agent2).mintAgent(agent2.address, 'uri2', ethers.ZeroHash, '0x', {
+    await inftMock.connect(agent2).mintAgent(agent2.address, 'uri2', ethers.ZeroHash, {
       value: ethers.parseEther('0.001'),
     });
     await registry

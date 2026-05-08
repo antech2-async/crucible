@@ -43,10 +43,10 @@ describe('TaskEscrow', () => {
     await vault.fundTreasury({ value: ethers.parseEther('10.0') });
 
     // Initial Registration for Agents
-    await inftMock.connect(agent1).mintAgent(agent1.address, 'uri1', ethers.ZeroHash, '0x', {
+    await inftMock.connect(agent1).mintAgent(agent1.address, 'uri1', ethers.ZeroHash, {
       value: ethers.parseEther('0.001'),
     });
-    await inftMock.connect(agent2).mintAgent(agent2.address, 'uri2', ethers.ZeroHash, '0x', {
+    await inftMock.connect(agent2).mintAgent(agent2.address, 'uri2', ethers.ZeroHash, {
       value: ethers.parseEther('0.001'),
     });
 

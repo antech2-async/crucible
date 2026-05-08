@@ -62,13 +62,13 @@ describe('SlashingJudge', () => {
     await judge.addAuthorizedCaller(engine.address);
 
     // Register Agents
-    await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, '0x', {
+    await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, {
       value: ethers.parseEther('0.001'),
     });
-    await inftMock.connect(agent2).mintAgent(agent2.address, 'uri', ethers.ZeroHash, '0x', {
+    await inftMock.connect(agent2).mintAgent(agent2.address, 'uri', ethers.ZeroHash, {
       value: ethers.parseEther('0.001'),
     });
-    await inftMock.connect(agent3).mintAgent(agent3.address, 'uri', ethers.ZeroHash, '0x', {
+    await inftMock.connect(agent3).mintAgent(agent3.address, 'uri', ethers.ZeroHash, {
       value: ethers.parseEther('0.001'),
     });
 

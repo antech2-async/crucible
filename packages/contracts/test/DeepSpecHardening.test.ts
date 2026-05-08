@@ -62,7 +62,7 @@ describe('Deep-Spec Hardening', () => {
     await vault.fundTreasury({ value: ethers.parseEther('10.0') });
 
     // Register Agent 1
-    await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, '0x', {
+    await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, {
       value: ethers.parseEther('0.001'),
     });
     await registry

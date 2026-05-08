@@ -30,7 +30,7 @@ describe('AgentRegistry', () => {
 
   describe('Agent Registration', () => {
     it('successfully registers an agent with default Tier 0', async () => {
-      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, '0x', {
+      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, {
         value: ethers.parseEther('0.001'),
       });
       await registry
@@ -45,7 +45,7 @@ describe('AgentRegistry', () => {
     });
 
     it('prevents duplicate INFT registrations', async () => {
-      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, '0x', {
+      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, {
         value: ethers.parseEther('0.001'),
       });
       await registry.connect(agent1).registerNativeAgent(agent1.address, 1, ethers.ZeroHash, []);
@@ -59,10 +59,10 @@ describe('AgentRegistry', () => {
     });
 
     it('prevents registering the same agent address twice', async () => {
-      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, '0x', {
+      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, {
         value: ethers.parseEther('0.001'),
       });
-      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri2', ethers.ZeroHash, '0x', {
+      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri2', ethers.ZeroHash, {
         value: ethers.parseEther('0.001'),
       });
 
@@ -75,7 +75,7 @@ describe('AgentRegistry', () => {
 
   describe('updateHistoryAndTrust', () => {
     beforeEach(async () => {
-      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, '0x', {
+      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, {
         value: ethers.parseEther('0.001'),
       });
       await registry.connect(agent1).registerNativeAgent(agent1.address, 1, ethers.ZeroHash, []);
@@ -115,10 +115,10 @@ describe('AgentRegistry', () => {
 
   describe('Capabilities Search', () => {
     it('returns array of agents with matching capabilities', async () => {
-      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, '0x', {
+      await inftMock.connect(agent1).mintAgent(agent1.address, 'uri', ethers.ZeroHash, {
         value: ethers.parseEther('0.001'),
       });
-      await inftMock.connect(agent2).mintAgent(agent2.address, 'uri', ethers.ZeroHash, '0x', {
+      await inftMock.connect(agent2).mintAgent(agent2.address, 'uri', ethers.ZeroHash, {
         value: ethers.parseEther('0.001'),
       });
 
