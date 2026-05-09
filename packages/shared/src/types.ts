@@ -35,7 +35,7 @@ export interface TaskHistoryEntry {
 
 export interface Criterion {
   fieldName: string;
-  operator: 'gte' | 'lte' | 'eq' | 'contains' | 'truthy';
+  operator: 'gte' | 'lte' | 'eq' | 'contains' | 'truthy' | 'json' | 'density';
   expectedValue: string;
   weight: number;
 }

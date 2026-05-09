@@ -38,7 +38,7 @@ contract CrucibleINFT is ERC721, Ownable, ReentrancyGuard {
 
     constructor(
         address _initialOwner
-    ) public ERC721("Crucible Agent", "CRAG") Ownable(_initialOwner) {}
+    ) ERC721("Crucible Agent", "CRAG") Ownable(_initialOwner) {}
 
     function setOracle(address _oracle) external onlyOwner {
         oracle = _oracle;
