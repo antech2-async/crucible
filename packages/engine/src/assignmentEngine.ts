@@ -9,8 +9,8 @@ import {
   AgentHistory,
   TaskCriteria,
   CONTRACT_ADDRESSES,
-  StorageService,
 } from '@crucible/shared';
+import { StorageService } from '../../shared/src/StorageService';
 import { PipelineCoordinator } from './pipelineCoordinator';
 
 // Load ABIs

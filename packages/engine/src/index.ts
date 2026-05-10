@@ -7,8 +7,8 @@ import {
   TASK_ESCROW_ABI,
   AGENT_REGISTRY_ABI,
   SLASHING_JUDGE_ABI,
-  StorageService,
 } from '@crucible/shared';
+import { StorageService } from '../../shared/src/StorageService';
 
 import { setupEthersWorkaround } from '../../shared/src/node-utils';
 import { AssignmentEngine } from './assignmentEngine';

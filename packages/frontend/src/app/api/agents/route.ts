@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { ethers, FetchRequest } from 'ethers';
 import axios from 'axios';
-import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES, StorageService } from '@crucible/shared';
+import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES } from '@crucible/shared';
+import { StorageService } from '../../../../../../packages/shared/src/StorageService';
 
 // 1. Disable global fetch to force ethers to use our custom fetcher
 try {

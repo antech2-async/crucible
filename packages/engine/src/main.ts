@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '../../.env' });
 import { logger } from '@crucible/shared';
-import { StorageService } from './services/storageService';
+import { StorageService } from '../../shared/src/StorageService';
 import { ComputeService } from './services/computeService';
 import { AssignmentEngine } from './assignmentEngine';
 import { ResearchAgent } from './agents/researchAgent';

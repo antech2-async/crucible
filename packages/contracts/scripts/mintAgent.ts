@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { StorageService } from '../../engine/src/services/storageService';
+import { StorageService } from '../../shared/src/StorageService';
 import CrucibleINFT from '../artifacts/contracts/CrucibleINFT.sol/CrucibleINFT.json';
 import AgentRegistryABI from '../artifacts/contracts/AgentRegistry.sol/AgentRegistry.json';
 import { CONTRACT_ADDRESSES } from '@crucible/shared';

@@ -1,5 +1,5 @@
 import { ComputeService } from '../services/computeService';
-import { StorageService } from '../services/storageService';
+import { StorageService } from '../../../shared/src/StorageService';
 import { logger } from '@crucible/shared';
 
 export class ResearchAgent {

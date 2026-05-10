@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import { logger } from '@crucible/shared';
 import TaskEscrowABI from '../../contracts/artifacts/contracts/TaskEscrow.sol/TaskEscrow.json';
 import { CONTRACT_ADDRESSES } from '@crucible/shared';
-import { StorageService } from './services/storageService';
+import { StorageService } from '../../shared/src/StorageService';
 
 // Import our Swarm Agents
 import { ResearchAgent } from './agents/researchAgent';

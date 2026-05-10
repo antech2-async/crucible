@@ -1,7 +1,8 @@
 import { ethers } from 'ethers';
 import * as dotenv from 'dotenv';
 import OpenAI from 'openai';
-import { CONTRACT_ADDRESSES, TASK_ESCROW_ABI, StorageService } from '@crucible/shared';
+import { CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucible/shared';
+import { StorageService } from '../shared/src/StorageService';
 import { setupEthersWorkaround } from '../shared/src/node-utils';
 
 dotenv.config({ path: '../../.env' });

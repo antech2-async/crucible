@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
-import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES, StorageService } from '@crucible/shared';
+import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES } from '@crucible/shared';
+import { StorageService } from '../../../../../../../packages/shared/src/StorageService';
 
 export const dynamic = 'force-dynamic';
 

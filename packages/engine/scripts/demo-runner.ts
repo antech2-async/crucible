@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { AssignmentEngine } from '../src/assignmentEngine';
 import { TrustScorer } from '../src/trustScorer';
-import { StorageService } from '../src/services/storageService';
+import { StorageService } from '../../shared/src/StorageService';
 import { CONTRACT_ADDRESSES, TaskStatus, TaskCriteria } from '@crucible/shared';
 import AgentRegistryABI from '../../contracts/artifacts/contracts/AgentRegistry.sol/AgentRegistry.json';
 import TaskEscrowABI from '../../contracts/artifacts/contracts/TaskEscrow.sol/TaskEscrow.json';

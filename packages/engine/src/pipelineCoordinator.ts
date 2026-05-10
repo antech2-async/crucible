@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { logger, TaskCriteria } from '@crucible/shared';
-import { StorageService } from './services/storageService';
+import { StorageService } from '../../shared/src/StorageService';
 import { ComputeService } from './services/computeService';
 import { CONTRACT_ADDRESSES } from '@crucible/shared';
 import TaskEscrowABI from '../../contracts/artifacts/contracts/TaskEscrow.sol/TaskEscrow.json';
