@@ -37,7 +37,6 @@ export class StorageService {
     const rootHash = tree!.rootHash();
     if (!rootHash) throw new Error('Merkle root hash generation failed');
 
-    // @ts-expect-error - ethers type mismatch across workspaces
     const [, uploadErr] = await this.indexer.upload(memData, process.env.OG_RPC_URL!, this.signer);
 
     // If it's just a timeout, we proceed because the tx was likely sent and deduplicated
@@ -67,7 +66,6 @@ export class StorageService {
     const rootHash = tree!.rootHash();
     if (!rootHash) throw new Error('Merkle root hash generation failed');
 
-    // @ts-expect-error - ethers type mismatch across workspaces
     const [, uploadErr] = await this.indexer.upload(memData, process.env.OG_RPC_URL!, this.signer);
 
     // If it's just a timeout, we proceed
