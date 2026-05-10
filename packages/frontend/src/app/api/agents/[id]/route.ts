@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
-import { Indexer } from '@0gfoundation/0g-ts-sdk';
-import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES } from '@crucible/shared';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs';
-import { storage } from '../../../../../../../packages/shared/src/StorageProvider';
+import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES, StorageService } from '@crucible/shared';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,14 +10,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const provider = new ethers.JsonRpcProvider(
     process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai',
   );
-  const indexer = new Indexer(
-    process.env.OG_STORAGE_INDEXER_URL || 'https://indexer-storage-testnet-turbo.0g.ai',
-  );
   const registry = new ethers.Contract(
     CONTRACT_ADDRESSES.AGENT_REGISTRY,
     AGENT_REGISTRY_ABI,
     provider,
   );
+  const storageService = new StorageService(process.env.PRIVATE_KEY!);
 
   try {
     const agentData = await registry.getAgent(params.id);
@@ -59,43 +52,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     };
 
     if (agentData.historyRootHash !== ethers.ZeroHash) {
-      let downloadedContent: string | null = null;
       try {
-        const tempPath = path.join(
-          os.tmpdir(),
-          `0g-temp-dossier-${agentData.historyRootHash}.json`,
-        );
-        const err = await indexer.download(agentData.historyRootHash, tempPath, false);
-
-        if (!err && fs.existsSync(tempPath)) {
-          downloadedContent = fs.readFileSync(tempPath).toString('utf-8');
-          fs.unlinkSync(tempPath);
-        }
+        history = await storageService.downloadHistory(agentData.historyRootHash);
       } catch (e) {
-        console.debug('Indexer download exception caught, proceeding to local fallback.');
-      }
-
-      if (downloadedContent) {
-        try {
-          const parsed = JSON.parse(downloadedContent);
-          if (parsed.recentWindow && parsed.totalTasks !== undefined) {
-            history = parsed;
-          }
-        } catch (e) {
-          // ignore
-        }
-      } else {
-        try {
-          const content = await storage.fetch(agentData.historyRootHash);
-          if (content && !content.startsWith('SIMULATED_CONTENT')) {
-            const parsed = JSON.parse(content);
-            if (parsed.recentWindow && parsed.totalTasks !== undefined) {
-              history = parsed;
-            }
-          }
-        } catch (e) {
-          // ignore
-        }
+        console.debug('Failed to download agent history from 0G Storage');
       }
     }
 

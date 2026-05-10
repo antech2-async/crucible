@@ -18,7 +18,7 @@ const STATUS_MAP = [
   'FAILED',
 ];
 
-export default function TaskCard({ taskId }: { taskId?: number }) {
+export default function TaskCard({ taskId, auditReport }: { taskId?: number; auditReport?: any }) {
   const { data: taskBasic } = useReadContract({
     address: CONTRACT_ADDRESSES.TASK_ESCROW as `0x${string}`,
     abi: TASK_ESCROW_ABI,
@@ -104,35 +104,20 @@ export default function TaskCard({ taskId }: { taskId?: number }) {
         </div>
       </div>
 
-      {/* Criteria */}
-      <div className="bg-surface-low border border-border p-3 mb-4 space-y-2.5">
-        <p className="text-[9px] font-mono uppercase tracking-widest text-on-surface-muted mb-1.5">
-          Verification Criteria
-        </p>
-        {displayCriteria.map((c: any, i: number) => (
-          <div key={i} className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {c.name === 'TEE Proof' || c.fieldName === 'TEE Proof' ? (
-                <Binary
-                  size={11}
-                  className={c.passed !== false ? 'text-success' : 'text-on-surface-dim'}
-                />
-              ) : (
-                <ShieldCheck
-                  size={11}
-                  className={c.passed !== false ? 'text-success' : 'text-on-surface-dim'}
-                />
-              )}
-              <span className="text-[10px] font-mono text-on-surface-muted">
-                {c.name || c.fieldName}
-              </span>
+
+      {/* Audit Results / Slashing Reasons */}
+      {auditReport && auditReport.results && auditReport.results.some((r: any) => !r.passed) && (
+        <div className="bg-danger/10 border border-danger/20 p-3 mb-4 space-y-1.5">
+          <p className="text-[9px] font-mono uppercase tracking-widest text-danger font-bold mb-1">
+            🚨 Slashing Verdict
+          </p>
+          {auditReport.results.filter((r: any) => !r.passed).map((r: any, i: number) => (
+            <div key={i} className="text-[10px] font-mono text-on-surface leading-tight">
+              Agent {r.agent.slice(0, 6)}: <span className="text-danger-muted">{r.reasons.join(', ')}</span>
             </div>
-            <span className="text-[10px] font-mono font-bold text-on-surface bg-surface border border-border px-2 py-0.5">
-              {c.value || c.expectedValue}
-            </span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Action */}
       <button className="w-full py-2.5 bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">

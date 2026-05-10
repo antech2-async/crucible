@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
-import { ethers } from 'ethers';
-import { Indexer } from '@0gfoundation/0g-ts-sdk';
-import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES } from '@crucible/shared';
-import { FetchRequest } from 'ethers';
+import { ethers, FetchRequest } from 'ethers';
 import axios from 'axios';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs';
-import { storage } from '../../../../../../packages/shared/src/StorageProvider';
+import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES, StorageService } from '@crucible/shared';
 
 // 1. Disable global fetch to force ethers to use our custom fetcher
 try {
@@ -47,7 +41,7 @@ export async function GET() {
     provider,
   );
 
-  const indexer = new Indexer(indexerUrl);
+  const storageService = new StorageService(process.env.PRIVATE_KEY!);
 
   try {
     const agentAddresses = await registry.getAgentList();
@@ -71,44 +65,10 @@ export async function GET() {
           };
 
           if (agentData.historyRootHash !== ethers.ZeroHash) {
-            let downloadedContent: string | null = null;
             try {
-              // Correct 0G SDK usage: download(hash, path, verify)
-              const tempPath = path.join(os.tmpdir(), `0g-temp-${agentData.historyRootHash}.json`);
-              const err = await indexer.download(agentData.historyRootHash, tempPath, false);
-
-              if (!err && fs.existsSync(tempPath)) {
-                downloadedContent = fs.readFileSync(tempPath).toString('utf-8');
-                fs.unlinkSync(tempPath);
-              }
+              history = await storageService.downloadHistory(agentData.historyRootHash);
             } catch (e) {
-              console.debug('Indexer download exception caught, proceeding to local fallback.');
-            }
-
-            if (downloadedContent) {
-              try {
-                const parsed = JSON.parse(downloadedContent);
-                if (parsed.recentWindow && parsed.totalTasks !== undefined) {
-                  history = parsed;
-                }
-              } catch (e) {
-                // ignore parse errors
-              }
-            } else {
-              // Fallback to Local Mock Storage if indexer fails or throws
-              try {
-                const content = await storage.fetch(agentData.historyRootHash);
-                if (content && !content.startsWith('SIMULATED_CONTENT')) {
-                  const parsed = JSON.parse(content);
-                  if (parsed.recentWindow && parsed.totalTasks !== undefined) {
-                    history = parsed;
-                  }
-                } else {
-                  console.debug('Indexer download failed, falling back to registry inference');
-                }
-              } catch (e) {
-                console.debug('Indexer download failed, falling back to registry inference');
-              }
+              console.debug('Failed to download agent history from 0G Storage');
             }
           }
 
@@ -120,7 +80,7 @@ export async function GET() {
             const recentRate =
               history.recentWindow.length > 0
                 ? history.recentWindow.reduce((a: number, b: number) => a + b, 0) /
-                  history.recentWindow.length
+                history.recentWindow.length
                 : 1.0;
 
             finalScore = recentRate * 0.6 + lifetimeRate * 0.4;

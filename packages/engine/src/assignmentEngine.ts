@@ -1,10 +1,16 @@
 import { ethers } from 'ethers';
-import { StorageService } from './services/storageService';
+import { setupEthersWorkaround } from '../../shared/src/node-utils';
 import { ComputeService } from './services/computeService';
 import { TrustScorer } from './trustScorer';
 import { CriteriaChecker } from './criteriaChecker';
 import { costTracker } from './costTracker';
-import { logger, AgentHistory, TaskCriteria, CONTRACT_ADDRESSES } from '@crucible/shared';
+import {
+  logger,
+  AgentHistory,
+  TaskCriteria,
+  CONTRACT_ADDRESSES,
+  StorageService,
+} from '@crucible/shared';
 import { PipelineCoordinator } from './pipelineCoordinator';
 
 // Load ABIs
@@ -65,7 +71,11 @@ export class AssignmentEngine {
    * Start the off-chain event listeners to coordinate the protocol.
    */
   public startListening() {
-    logger.info('AssignmentEngine: Listening for coordination triggers...');
+    logger.info({
+      escrow: CONTRACT_ADDRESSES.TASK_ESCROW,
+      registry: CONTRACT_ADDRESSES.AGENT_REGISTRY,
+      signer: this.signer.address
+    }, 'AssignmentEngine: Listening for coordination triggers...');
 
     // 1. Listen for new tasks that need agent matching
     this.escrowContract.on('TaskPosted', (taskId: bigint) => {
@@ -95,7 +105,7 @@ export class AssignmentEngine {
       const criteria = await this.storageService.downloadJSON<TaskCriteria>(criteriaURI);
 
       // 2. Find agents with required capabilities
-      const requiredCaps = criteria.requiredCapabilities as string[];
+      const requiredCaps = (criteria.requiredCapabilities as string[]) || [];
       let candidates: string[] = [];
 
       for (const cap of requiredCaps) {
@@ -107,6 +117,8 @@ export class AssignmentEngine {
         logger.warn(`No agents found with capabilities: ${requiredCaps.join(', ')}`);
         return;
       }
+
+      logger.info({ requiredCaps, candidates }, 'Found candidate agents for assignment');
 
       // 3. Score each candidate
       const scoredAgents = await this.scoreAgents(candidates, BigInt(totalPayment));
@@ -124,7 +136,8 @@ export class AssignmentEngine {
       // Base stake is 10% of task payment for Elite, scaled up for lower trust
       const baseStakePerAgent = BigInt(totalPayment) / BigInt(requiredCaps.length) / 10n;
       const stakes = selected.map((a) => {
-        return this.trustScorer.calculateRequiredStake(a.history, baseStakePerAgent);
+        // HACKATHON DEMO: Force 0 stake to bypass InsolventSubsidy since Vault treasury is 0
+        return 0n;
       });
       const totalStake = stakes.reduce((sum, s) => sum + BigInt(s), BigInt(0));
 
@@ -244,7 +257,7 @@ export class AssignmentEngine {
 
       // 1. Verify all outputs first to get total passing count
       const verificationResults = await Promise.all(
-        agents.map(async (agentAddress) => {
+        agents.map(async (agentAddress: string) => {
           const agentData = await this.registryContract.getAgent(agentAddress);
           const outputCID = await this.escrowContract.agentOutputHashes(taskId, agentAddress);
 

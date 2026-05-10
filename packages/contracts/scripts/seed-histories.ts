@@ -3,7 +3,7 @@ import { Indexer, MemData } from '@0gfoundation/0g-ts-sdk';
 import axios from 'axios';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { storage } from '../../shared/src/StorageProvider';
+import { StorageService } from '../../shared/src/StorageService';
 dotenv.config({ path: path.join(__dirname, '../../../.env') });
 
 // Axios workaround for Node v22
@@ -24,46 +24,10 @@ FetchRequest.registerGetUrl(async (req) => {
 });
 
 async function uploadHistory(
-  indexer: Indexer,
-  signer: ethers.Wallet,
-  history: object,
+  storageService: StorageService,
+  history: any,
 ): Promise<string> {
-  let jsonString = JSON.stringify(history);
-  if (jsonString.length < 256) {
-    jsonString = jsonString.padEnd(256, ' ');
-  }
-  const memData = new MemData(Buffer.from(jsonString));
-  const [tree, treeErr] = await memData.merkleTree();
-  if (treeErr) throw new Error(`Merkle error: ${treeErr}`);
-  const rootHash = tree!.rootHash()!;
-
-  // Write to local fallback storage so demo works even if 0G indexer times out
-  await storage.commitWithHash(rootHash, jsonString);
-
-  // Hardcode a safe but tiny fee (0.001 OG) to ensure the submission is accepted
-  const fee = ethers.parseUnits('0.04', 'ether');
-  console.log(
-    `  Submitting with safety fee: ${ethers.formatEther(fee)} OG (Padded size: ${jsonString.length} bytes)`,
-  );
-
-  try {
-    // @ts-expect-error - ethers type mismatch across workspaces
-    const uploadPromise = indexer.upload(memData, process.env.OG_RPC_URL!, signer);
-
-    const [, uploadErr] = (await Promise.race([
-      uploadPromise,
-      new Promise((resolve) => setTimeout(() => resolve([null, 'timeout']), 30000)),
-    ])) as [any, any];
-
-    if (uploadErr && !uploadErr.toString().includes('timeout')) {
-      console.warn(`  Storage Warning: ${uploadErr}. Proceeding to Registry update anyway.`);
-    } else if (uploadErr) {
-      console.log('  Upload timed out or taking too long. Proceeding with Registry update...');
-    }
-  } catch (err: any) {
-    console.warn(`  Storage Upload Failed: ${err.message}. Proceeding to Registry update anyway.`);
-  }
-
+  const { rootHash } = await storageService.uploadJSON(history);
   return rootHash;
 }
 
@@ -182,7 +146,7 @@ const badBotHistory = {
 async function main() {
   const provider = new ethers.JsonRpcProvider(process.env.OG_RPC_URL!);
   const signer = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-  const indexer = new Indexer(process.env.OG_STORAGE_INDEXER_URL!);
+  const storageService = new StorageService(process.env.PRIVATE_KEY!);
 
   const registryABI = [
     'function updateHistoryAndTrust(address agentAddress, bytes32 newHistoryHash, uint8 newTrustTier, bool wasSlashed) external',
@@ -236,7 +200,7 @@ async function main() {
         ).wait();
       }
 
-      const rootHash = await uploadHistory(indexer, signer, persona.history);
+      const rootHash = await uploadHistory(storageService, persona.history);
 
       console.log(`  Updating Registry for ${addr} to Tier ${persona.tier}...`);
       await (await registry.updateHistoryAndTrust(addr, rootHash, persona.tier, false)).wait();

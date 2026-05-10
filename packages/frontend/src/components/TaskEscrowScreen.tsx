@@ -50,6 +50,7 @@ export type TaskApiTask = {
   assignedAgents: string[];
   agentStakes: string[];
   submittedCount: number;
+  auditReport?: any;
 };
 
 export type TaskApiResponse = {

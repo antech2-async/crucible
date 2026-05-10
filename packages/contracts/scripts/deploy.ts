@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { FetchRequest } from 'ethers';
 import axios from 'axios';
-import { storage } from '../../shared/src/StorageProvider';
+import { StorageService } from '../../shared/src/StorageService';
 
 // Disable global fetch to workaround undici maxRedirections bug in Node v22 / ethers v6
 try {
@@ -162,9 +162,9 @@ async function main() {
   };
 
   try {
-    const { hash: criteriaRootHash, uri: criteriaURI } = await storage.commit(
-      JSON.stringify(beginnerCriteria),
-    );
+    const storageService = new StorageService(privateKey);
+    const { rootHash: criteriaRootHash } = await storageService.uploadJSON(beginnerCriteria);
+    const criteriaURI = `0g://criteria/${criteriaRootHash.slice(0, 16)}`;
     const criteriaBytes32 = ethers.keccak256(ethers.toUtf8Bytes(criteriaRootHash));
     const deadline = Math.floor(Date.now() / 1000) + 86400; // 24 hours
 

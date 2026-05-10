@@ -39,7 +39,7 @@ export class CriteriaChecker {
       actualValue = outputContent;
     }
 
-    switch (criterion.operator) {
+    switch (criterion.operator as any) {
       case 'gte':
         return (
           typeof actualValue === 'number' && actualValue >= parseInt(criterion.expectedValue, 10)

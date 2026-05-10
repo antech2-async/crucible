@@ -1,8 +1,10 @@
 import { ethers } from 'ethers';
 import * as dotenv from 'dotenv';
 import { spawn } from 'child_process';
+import { setupEthersWorkaround } from '../shared/src/node-utils';
 
 dotenv.config({ path: '../../.env' });
+setupEthersWorkaround();
 
 async function main() {
   const privateKey = process.env.PRIVATE_KEY;

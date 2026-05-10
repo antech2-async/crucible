@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import * as dotenv from 'dotenv';
-import { storage } from '../../shared/src/StorageProvider';
+import { StorageService } from '../../shared/src/StorageService';
 
 dotenv.config();
 
@@ -37,9 +37,9 @@ async function main() {
 
   // 3. Upload Criteria to 0G Storage
   console.log(`Uploading beginner criteria to 0G Storage...`);
-  const { hash: criteriaRootHash, uri: criteriaURI } = await storage.commit(
-    JSON.stringify(criteria),
-  );
+  const storageService = new StorageService(process.env.PRIVATE_KEY!);
+  const { rootHash: criteriaRootHash } = await storageService.uploadJSON(criteria);
+  const criteriaURI = `0g://criteria/${criteriaRootHash.slice(0, 16)}`;
   const criteriaBytes32 = ethers.keccak256(ethers.toUtf8Bytes(criteriaRootHash));
   const deadline = Math.floor(Date.now() / 1000) + 7 * 86400; // 7 days from now
 

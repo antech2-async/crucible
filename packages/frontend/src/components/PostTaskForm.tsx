@@ -72,8 +72,21 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
     if (isConfirmed) onPosted?.();
   }, [isConfirmed, onPosted]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 1. Upload criteria to 0G Storage via API
+    try {
+        const uploadRes = await fetch('/api/upload-criteria', {
+            method: 'POST',
+            body: JSON.stringify(criteriaPayload),
+            headers: { 'Content-Type': 'application/json' },
+        });
+        if (!uploadRes.ok) throw new Error('0G Criteria Upload failed');
+        console.log('Criteria successfully committed to 0G Storage');
+    } catch (err) {
+        console.error('Criteria storage failed, but proceeding with chain tx...', err);
+    }
 
     const deadlineSeconds =
       Math.floor(Date.now() / 1000) + Math.max(1, parseInt(formData.deadlineHours, 10)) * 3600;

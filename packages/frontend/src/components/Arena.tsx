@@ -61,6 +61,7 @@ export default function Arena() {
   const [agents, setAgents] = useState<DashboardAgent[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [networkShock, setNetworkShock] = useState(false);
+  const [latestTasks, setLatestTasks] = useState<any[]>([]);
 
   const { data: agentList } = useReadContract({
     address: CONTRACT_ADDRESSES.AGENT_REGISTRY as `0x${string}`,
@@ -134,8 +135,24 @@ export default function Arena() {
         console.error('Failed to sync agent telemetry', err);
       }
     }
+
+    async function fetchTasks() {
+      try {
+        const res = await fetch('/api/tasks');
+        if (!res.ok) throw new Error('fetch tasks failed');
+        const payload = await res.json();
+        setLatestTasks(payload.tasks || []);
+      } catch (err) {
+        console.error('Failed to sync tasks', err);
+      }
+    }
+
     fetchAgents();
-    const id = setInterval(fetchAgents, 10000);
+    fetchTasks();
+    const id = setInterval(() => {
+      fetchAgents();
+      fetchTasks();
+    }, 10000);
     return () => clearInterval(id);
   }, []);
 
@@ -276,7 +293,10 @@ export default function Arena() {
             <h3 className="mb-3 font-display text-[11px] font-bold uppercase tracking-widest text-on-surface-muted/70">
               Latest Network Task
             </h3>
-            <TaskCard taskId={taskCountValue - 1} />
+            <TaskCard 
+              taskId={taskCountValue - 1} 
+              auditReport={latestTasks.find(t => t.id === taskCountValue - 1)?.auditReport} 
+            />
           </div>
         ) : null}
       </section>

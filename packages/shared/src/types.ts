@@ -31,6 +31,7 @@ export interface TaskHistoryEntry {
   collaborators: string[];
   outputHash: string;
   paymentReceived: string;
+  auditReportHash?: string;
 }
 
 export interface Criterion {

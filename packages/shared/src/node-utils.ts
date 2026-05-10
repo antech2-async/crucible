@@ -15,18 +15,29 @@ export function setupEthersWorkaround() {
   }
 
   FetchRequest.registerGetUrl(async (req) => {
-    const response = await axios({
-      url: req.url,
-      method: req.method,
-      data: req.body ? Buffer.from(req.body) : undefined,
-      headers: req.headers,
-      responseType: 'arraybuffer',
-    });
-    return {
-      statusCode: response.status,
-      statusMessage: response.statusText,
-      headers: response.headers as Record<string, string>,
-      body: new Uint8Array(response.data),
-    };
+    let lastError: any;
+    for (let i = 0; i < 3; i++) {
+      try {
+        const response = await axios({
+          url: req.url,
+          method: req.method,
+          data: req.body ? Buffer.from(req.body) : undefined,
+          headers: req.headers,
+          responseType: 'arraybuffer',
+          timeout: 15000, // 15s timeout
+        });
+        return {
+          statusCode: response.status,
+          statusMessage: response.statusText,
+          headers: response.headers as Record<string, string>,
+          body: new Uint8Array(response.data),
+        };
+      } catch (err) {
+        lastError = err;
+        // Wait 1s before retry
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+    throw lastError;
   });
 }

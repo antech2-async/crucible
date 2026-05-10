@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import * as dotenv from 'dotenv';
 import { FetchRequest } from 'ethers';
 import axios from 'axios';
-import { storage } from '../../shared/src/StorageProvider';
+import { StorageService } from '../../shared/src/StorageService';
 
 dotenv.config();
 
@@ -127,10 +127,11 @@ async function main() {
   for (const p of personae) {
     console.log(`Setting up ${p.name} (${p.signer.address})...`);
 
-    // A. Mock Storage (simulating 0G Storage)
+    // A. Real 0G Storage
+    const storageService = new StorageService(privateKey);
     const metadata = { name: p.name, created: Date.now() };
-    const { hash } = await storage.commit(JSON.stringify(metadata));
-    const bytes32Hash = ethers.keccak256(ethers.toUtf8Bytes(hash));
+    const { rootHash } = await storageService.uploadJSON(metadata);
+    const bytes32Hash = ethers.keccak256(ethers.toUtf8Bytes(rootHash));
 
     // B. Mint INFT
     console.log(`    Minting INFT for ${p.name}...`);
