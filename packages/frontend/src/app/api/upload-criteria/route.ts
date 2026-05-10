@@ -21,7 +21,6 @@ export async function POST(request: Request) {
     if (treeErr) throw new Error(`Merkle error: ${treeErr}`);
 
     const rootHash = tree!.rootHash()!;
-    // @ts-expect-error - ethers type mismatch across workspaces
     const [, uploadErr] = await indexer.upload(memData, process.env.OG_RPC_URL!, signer);
 
     if (uploadErr && !uploadErr.toString().includes('timeout')) {

@@ -3,8 +3,6 @@ import { CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucible/shared';
 import { setupEthersWorkaround } from '../../../../shared/src/node-utils';
 import type { TaskApiResponse, TaskApiTask } from '@/components/TaskEscrowScreen';
 
-setupEthersWorkaround();
-
 export const EMPTY_TASK_ESCROW_SNAPSHOT: TaskApiResponse = {
   taskCount: 0,
   protocol: {
@@ -17,6 +15,7 @@ export const EMPTY_TASK_ESCROW_SNAPSHOT: TaskApiResponse = {
 };
 
 export async function getTaskEscrowSnapshot(): Promise<TaskApiResponse> {
+  setupEthersWorkaround();
   const rpcUrl = process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai';
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const escrow = new ethers.Contract(CONTRACT_ADDRESSES.TASK_ESCROW, TASK_ESCROW_ABI, provider);

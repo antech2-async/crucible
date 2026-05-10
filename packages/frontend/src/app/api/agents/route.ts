@@ -11,8 +11,7 @@ import { storage } from '../../../../../../packages/shared/src/StorageProvider';
 
 // 1. Disable global fetch to force ethers to use our custom fetcher
 try {
-  // @ts-expect-error - Forcefully nulling fetch to workaround undici bug
-  global.fetch = undefined;
+  (globalThis as { fetch?: unknown }).fetch = undefined;
 } catch (e) {
   // Silently continue if fetch is already undefined or immutable
 }
