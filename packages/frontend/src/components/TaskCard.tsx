@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Target, Clock, ShieldCheck, ChevronRight, Binary } from 'lucide-react';
-import { Surface } from '@/components/ui';
-import { useReadContract } from 'wagmi';
-import { CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucible/shared';
+import { Clock, ChevronRight, Target } from 'lucide-react';
+import Link from 'next/link';
 import { ethers } from 'ethers';
+import { useReadContract } from 'wagmi';
+import { CONTRACT_ADDRESSES, TASK_ESCROW_ABI, TaskStatus } from '@crucible/shared';
+import { Surface } from '@/components/ui';
 
 const STATUS_MAP = [
   'OPEN',
@@ -27,31 +27,6 @@ export default function TaskCard({ taskId, auditReport }: { taskId?: number; aud
     query: { enabled: taskId !== undefined },
   });
 
-  const [criteria, setCriteria] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (taskBasic && (taskBasic as any)[5]) {
-      try {
-        const uri = (taskBasic as any)[5];
-        if (uri.startsWith('ipfs://')) {
-          const url = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
-          fetch(url)
-            .then((r) => r.json())
-            .then((data) => {
-              if (data.criteria) setCriteria(data.criteria);
-            })
-            .catch(() => {
-              /* ignore */
-            });
-        } else {
-          setCriteria([{ name: 'TEE Proof', value: 'Valid', passed: true }]);
-        }
-      } catch (e) {
-        /* ignore */
-      }
-    }
-  }, [taskBasic]);
-
   if (taskId === undefined || !taskBasic) {
     return (
       <Surface level="container" className="p-5 animate-pulse">
@@ -63,27 +38,21 @@ export default function TaskCard({ taskId, auditReport }: { taskId?: number; aud
   }
 
   const basic = taskBasic as any[];
-  const statusStr = STATUS_MAP[Number(basic[3])] || 'UNKNOWN';
-  const payment = ethers.formatEther(basic[1]) + ' 0G';
+  const status = Number(basic[3]);
+  const statusStr = STATUS_MAP[status] || 'UNKNOWN';
+  const payment = `${ethers.formatEther(basic[1])} 0G`;
   const shortPoster = `${basic[0].slice(0, 6)}...${basic[0].slice(-4)}`;
 
-  // Format deadline countdown
   const deadlineMs = Number(basic[2]) * 1000;
   const isExpired = Date.now() > deadlineMs;
   const diff = Math.max(0, deadlineMs - Date.now());
   const hrs = Math.floor(diff / 3600000);
   const mins = Math.floor((diff % 3600000) / 60000);
   const timeStr = isExpired ? 'Expired' : `${hrs}h ${mins}m`;
-
-  const fallbackCriteria = [
-    { name: 'TEE Proof', value: 'Valid', passed: true },
-    { name: 'Word Count', value: '>= 500', passed: true },
-  ];
-  const displayCriteria = criteria.length > 0 ? criteria : fallbackCriteria;
+  const proofHref = `/tasks?filter=${filterForStatus(status)}&task=${taskId}#tee-proof`;
 
   return (
     <Surface level="container" className="p-5">
-      {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -104,27 +73,29 @@ export default function TaskCard({ taskId, auditReport }: { taskId?: number; aud
         </div>
       </div>
 
-
-      {/* Audit Results / Slashing Reasons */}
       {auditReport && auditReport.results && auditReport.results.some((r: any) => !r.passed) && (
         <div className="bg-danger/10 border border-danger/20 p-3 mb-4 space-y-1.5">
           <p className="text-[9px] font-mono uppercase tracking-widest text-danger font-bold mb-1">
-            🚨 Slashing Verdict
+            Slashing Verdict
           </p>
-          {auditReport.results.filter((r: any) => !r.passed).map((r: any, i: number) => (
-            <div key={i} className="text-[10px] font-mono text-on-surface leading-tight">
-              Agent {r.agent.slice(0, 6)}: <span className="text-danger-muted">{r.reasons.join(', ')}</span>
-            </div>
-          ))}
+          {auditReport.results
+            .filter((r: any) => !r.passed)
+            .map((r: any, i: number) => (
+              <div key={i} className="text-[10px] font-mono text-on-surface leading-tight">
+                Agent {r.agent.slice(0, 6)}:{' '}
+                <span className="text-danger-muted">{r.reasons.join(', ')}</span>
+              </div>
+            ))}
         </div>
       )}
 
-      {/* Action */}
-      <button className="w-full py-2.5 bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
+      <Link
+        href={proofHref}
+        className="w-full py-2.5 bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
+      >
         View Full TEE Proof <ChevronRight size={12} />
-      </button>
+      </Link>
 
-      {/* Status */}
       <div className="mt-3 flex items-center justify-center gap-2 pt-3 border-t border-border">
         {statusStr === 'VERIFYING' || statusStr === 'IN PIPELINE' ? (
           <div className="w-1.5 h-1.5 bg-primary animate-pulse" />
@@ -137,4 +108,17 @@ export default function TaskCard({ taskId, auditReport }: { taskId?: number; aud
       </div>
     </Surface>
   );
+}
+
+function filterForStatus(status: number) {
+  if (status === TaskStatus.VERIFYING) return 'verifying';
+  if (
+    status === TaskStatus.COMPLETED ||
+    status === TaskStatus.PARTIALLY_COMPLETED ||
+    status === TaskStatus.DISPUTED ||
+    status === TaskStatus.FAILED
+  ) {
+    return 'completed';
+  }
+  return 'open';
 }

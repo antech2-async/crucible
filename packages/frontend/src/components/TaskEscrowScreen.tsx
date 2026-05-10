@@ -13,6 +13,7 @@ import {
   Loader2,
   Plus,
   ShieldAlert,
+  ShieldCheck,
   X,
   XCircle,
 } from 'lucide-react';
@@ -23,6 +24,19 @@ import PostTaskForm from '@/components/PostTaskForm';
 import { cn } from '@/lib/utils';
 
 type TaskCategory = 'open' | 'verifying' | 'completed';
+type VerificationMode = 'tee-attestation' | 'hash-commitment' | 'missing';
+
+export type TaskProof = {
+  agent: string;
+  agentClass: 'native' | 'external' | 'unknown';
+  submitted: boolean;
+  outputHash: string;
+  attestationHex: string;
+  attestationText?: string;
+  verificationMode: VerificationMode;
+  auditPassed?: boolean;
+  auditReasons: string[];
+};
 
 type EscrowTask = {
   id: number;
@@ -36,6 +50,8 @@ type EscrowTask = {
   assignedAgents: `0x${string}`[];
   agentStakes: bigint[];
   submittedCount: number;
+  auditReport?: any;
+  proofs: TaskProof[];
 };
 
 export type TaskApiTask = {
@@ -51,6 +67,7 @@ export type TaskApiTask = {
   agentStakes: string[];
   submittedCount: number;
   auditReport?: any;
+  proofs?: TaskProof[];
 };
 
 export type TaskApiResponse = {
@@ -150,6 +167,7 @@ export default function TaskEscrowScreen({
   const { data, error, isLoading, refetch } = useQuery<TaskApiResponse>({
     queryKey: ['escrow-tasks'],
     initialData,
+    initialDataUpdatedAt: 0,
     refetchInterval: 10000,
     staleTime: 5000,
     queryFn: async () => {
@@ -173,6 +191,8 @@ export default function TaskEscrowScreen({
         assignedAgents: task.assignedAgents as `0x${string}`[],
         agentStakes: task.agentStakes.map((stake) => BigInt(stake)),
         submittedCount: task.submittedCount,
+        auditReport: task.auditReport,
+        proofs: task.proofs ?? [],
       })),
     [data?.tasks],
   );
@@ -199,6 +219,12 @@ export default function TaskEscrowScreen({
   const selectedTask = useMemo(() => {
     return tasks.find((task) => task.id === selectedTaskId) ?? tasks[0] ?? null;
   }, [selectedTaskId, tasks]);
+
+  useEffect(() => {
+    if (selectedTask?.id && window.location.hash === '#tee-proof') {
+      document.getElementById('tee-proof')?.scrollIntoView({ block: 'start' });
+    }
+  }, [selectedTask?.id]);
 
   const filteredTasks = useMemo(
     () => tasks.filter((task) => getTaskMeta(task.status).category === activeFilter),
@@ -340,6 +366,8 @@ export default function TaskEscrowScreen({
             )}
           </section>
 
+          {selectedTask ? <TeeProofPanel task={selectedTask} /> : null}
+
           <section
             id="escrow-registry"
             className="panel-interactive scroll-mt-24 overflow-hidden rounded-lg border border-border-strong/15 bg-surface-low shadow-[0_18px_44px_-32px_rgba(255,213,151,0.2)]"
@@ -473,6 +501,173 @@ function EmptyPanel({ onCreate }: { onCreate: () => void }) {
           Engage Escrow Protocol
         </a>
       </div>
+    </div>
+  );
+}
+
+function TeeProofPanel({ task }: { task: EscrowTask }) {
+  const proofs = task.proofs ?? [];
+  const teeCount = proofs.filter((proof) => proof.verificationMode === 'tee-attestation').length;
+  const hashCount = proofs.filter((proof) => proof.verificationMode === 'hash-commitment').length;
+  const missingCount = Math.max(0, task.assignedAgents.length - teeCount - hashCount);
+  const summaryMode =
+    teeCount > 0 ? 'TEE attestation' : hashCount > 0 ? 'Hash commitment' : 'Proof pending';
+
+  return (
+    <section
+      id="tee-proof"
+      className="panel-interactive scroll-mt-24 overflow-hidden rounded-lg border border-border-strong/15 bg-surface-low shadow-[0_18px_44px_-32px_rgba(255,213,151,0.18)]"
+    >
+      <div className="flex flex-col gap-4 border-b border-border-strong/10 p-5 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
+            <ShieldCheck size={14} className="text-primary" />
+            TEE Proof Trail
+          </div>
+          <p className="mt-2 max-w-2xl text-xs leading-relaxed text-on-surface-muted">
+            Native agents only count as TEE verified when the TaskEscrow contract records non-empty
+            attestation bytes. External or failed submissions are shown as hash commitments or
+            missing proofs.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <StatusBadge status={task.status} />
+          <span className="rounded border border-primary/25 bg-primary/5 px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-primary">
+            {summaryMode}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid gap-3 border-b border-border-strong/10 p-5 md:grid-cols-4">
+        <HeroMetric label="Task" value={`#${task.id}`} />
+        <HeroMetric
+          label="Submissions"
+          value={`${task.submittedCount}/${task.assignedAgents.length}`}
+        />
+        <HeroMetric label="TEE Proofs" value={String(teeCount)} accent="secondary" />
+        <HeroMetric label="Missing" value={String(missingCount)} />
+      </div>
+
+      {proofs.length ? (
+        <div className="divide-y divide-border-strong/10">
+          {proofs.map((proof, index) => (
+            <ProofRow key={`${proof.agent}-${index}`} proof={proof} />
+          ))}
+        </div>
+      ) : (
+        <div className="p-5">
+          <div className="rounded border border-dashed border-border p-5 text-center">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
+              No assigned agents yet
+            </p>
+          </div>
+        </div>
+      )}
+
+      {task.auditReport?.results?.some((result: any) => !result.passed) ? (
+        <div className="border-t border-danger/20 bg-danger/5 p-5">
+          <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-widest text-danger">
+            Slashing audit reasons
+          </p>
+          <div className="space-y-2">
+            {task.auditReport.results
+              .filter((result: any) => !result.passed)
+              .map((result: any) => (
+                <p
+                  key={result.agent}
+                  className="break-words font-mono text-[10px] leading-relaxed text-on-surface-muted"
+                >
+                  {shortAddress(result.agent || '')}: {result.reasons?.join(', ') || 'Audit failed'}
+                </p>
+              ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ProofRow({ proof }: { proof: TaskProof }) {
+  const modeMeta = getVerificationModeMeta(proof);
+  const preview = proof.attestationText || proof.attestationHex;
+
+  return (
+    <div className="grid gap-4 p-5 lg:grid-cols-[0.9fr_1.4fr]">
+      <div className="min-w-0">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="rounded border border-border-strong/20 px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
+            {shortAddress(proof.agent)}
+          </span>
+          <span
+            className={cn(
+              'rounded border px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-widest',
+              modeMeta.className,
+            )}
+          >
+            {modeMeta.label}
+          </span>
+        </div>
+        <div className="space-y-2 font-mono text-[10px] uppercase tracking-widest text-on-surface-dim">
+          <p>Agent Class: {proof.agentClass}</p>
+          <p>Submitted: {proof.submitted ? 'Yes' : 'No'}</p>
+          <p>
+            Audit:{' '}
+            {typeof proof.auditPassed === 'boolean'
+              ? proof.auditPassed
+                ? 'Passed'
+                : 'Failed'
+              : 'Pending'}
+          </p>
+        </div>
+        {proof.auditReasons.length ? (
+          <p className="mt-4 text-xs leading-relaxed text-danger">
+            {proof.auditReasons.join(', ')}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="min-w-0 space-y-3">
+        <ProofField
+          label="Output Hash / 0G Storage Commitment"
+          value={proof.outputHash || 'No output hash recorded'}
+        />
+        {proof.verificationMode === 'tee-attestation' ? (
+          <ProofField label="TEE Attestation Preview" value={truncateProof(preview)} multiline />
+        ) : (
+          <div className="rounded border border-border-strong/10 bg-surface/45 p-3">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
+              TEE Attestation
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-on-surface-muted">
+              {modeMeta.description}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProofField({
+  label,
+  value,
+  multiline = false,
+}: {
+  label: string;
+  value: string;
+  multiline?: boolean;
+}) {
+  return (
+    <div className="rounded border border-border-strong/10 bg-surface/45 p-3">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">{label}</p>
+      <p
+        className={cn(
+          'mt-2 break-all font-mono text-[10px] leading-relaxed text-on-surface',
+          multiline && 'max-h-32 overflow-y-auto whitespace-pre-wrap',
+        )}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -852,9 +1047,45 @@ function formatDuration(seconds: number) {
 }
 
 function shortAddress(address: string) {
+  if (!address) return '-';
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 function shortHash(hash: string) {
   return `${hash.slice(0, 10)}...${hash.slice(-8)}`;
+}
+
+function getVerificationModeMeta(proof: TaskProof) {
+  if (proof.verificationMode === 'tee-attestation') {
+    return {
+      label: 'TEE Attestation',
+      className: 'border-secondary/30 bg-secondary/5 text-secondary',
+      description: '0G Compute attestation bytes were recorded for this native agent.',
+    };
+  }
+
+  if (proof.verificationMode === 'hash-commitment') {
+    const description =
+      proof.agentClass === 'external'
+        ? 'External agents use a hash commitment path; no 0G TEE attestation is claimed.'
+        : 'No TEE attestation recorded. This submission is traceable through its output hash and audit verdict only.';
+
+    return {
+      label: 'Hash Commitment',
+      className: 'border-primary/35 bg-primary/5 text-primary',
+      description,
+    };
+  }
+
+  return {
+    label: 'Missing Proof',
+    className: 'border-danger/30 bg-danger/5 text-danger',
+    description:
+      'No TEE attestation recorded and no submitted output hash is available for this agent.',
+  };
+}
+
+function truncateProof(value: string) {
+  if (!value) return 'No attestation payload decoded';
+  return value.length > 900 ? `${value.slice(0, 900)}...` : value;
 }
