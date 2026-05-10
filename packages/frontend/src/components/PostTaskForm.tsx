@@ -40,8 +40,21 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
   const criteriaPayload = useMemo(
     () => ({
       topic: formData.topic.trim(),
-      minWords: Number(formData.minWords),
-      minSources: Number(formData.minSources),
+      requiredCapabilities: ['research', 'writing'],
+      criteria: [
+        {
+          fieldName: 'wordCount',
+          operator: 'gte',
+          expectedValue: formData.minWords.toString(),
+          weight: 2,
+        },
+        {
+          fieldName: 'sourceCount',
+          operator: 'gte',
+          expectedValue: formData.minSources.toString(),
+          weight: 1,
+        },
+      ],
       isSequential: formData.isSequential,
       version: 1,
     }),
