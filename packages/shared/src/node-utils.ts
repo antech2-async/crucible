@@ -8,8 +8,8 @@ import axios from 'axios';
 export function setupEthersWorkaround() {
   // Disable global fetch to force ethers to use our custom fetcher
   try {
-    // @ts-expect-error - Forcefully nulling fetch to workaround undici bug
-    global.fetch = undefined;
+    // Forcefully clear fetch so ethers uses FetchRequest.registerGetUrl (undici workaround on Node 22).
+    (globalThis as { fetch?: unknown }).fetch = undefined;
   } catch (e) {
     // Silently continue if fetch is already undefined or immutable
   }
