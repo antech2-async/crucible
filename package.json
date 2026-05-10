@@ -4,14 +4,14 @@
   "private": true,
   "description": "Crucible - AI Agent Coordination Layer for 0G Hackathon",
   "engines": {
-    "node": ">=20 <21",
-    "npm": ">=10 <11"
+    "node": ">=20",
+    "npm": ">=10"
   },
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "prepare": "husky install",
+    "prepare": "husky install || true",
     "lint": "npm run lint:ts && npm run lint:sol",
     "lint:ts": "eslint packages --ext .ts,.tsx",
     "lint:ts:fix": "eslint packages --ext .ts,.tsx --fix",
