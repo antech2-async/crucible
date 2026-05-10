@@ -80,9 +80,8 @@ export class AssignmentEngine {
       },
     );
 
-    // 3. Listen for judge commits to update the cost tracker
-    this.judgeContract.on('TaskJudged', (taskId: bigint) => {
-      // Fee tracking logic is handled inside processTaskOutputs
+    // 3. Listen for judge commits (on-chain: JudgmentIssued in SlashingJudge.sol)
+    this.judgeContract.on('JudgmentIssued', (taskId: bigint) => {
       logger.info(`Audit: Task ${taskId} judged.`);
     });
   }
