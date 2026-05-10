@@ -2,12 +2,12 @@ import { ethers } from 'ethers';
 import * as dotenv from 'dotenv';
 import { spawn } from 'child_process';
 
-dotenv.config();
+dotenv.config({ path: '../../.env' });
 
 async function main() {
   const privateKey = process.env.PRIVATE_KEY;
   const rpcUrl = process.env.OG_RPC_URL;
-  const escrowAddress = process.env.ESCROW_CONTRACT_ADDRESS;
+  const escrowAddress = process.env.ESCROW_ADDRESS;
 
   if (!privateKey || !rpcUrl || !escrowAddress) {
     console.error('Missing environment variables. Check your .env file.');

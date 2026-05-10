@@ -1,13 +1,13 @@
 import { ethers } from 'ethers';
 import * as dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ path: '../../.env' });
 
 async function main() {
   const privateKey = process.env.PRIVATE_KEY;
   const rpcUrl = process.env.OG_RPC_URL;
-  const registryAddress = process.env.REGISTRY_CONTRACT_ADDRESS;
-  const inftAddress = process.env.INFT_CONTRACT_ADDRESS;
+  const registryAddress = process.env.REGISTRY_ADDRESS;
+  const inftAddress = process.env.INFT_ADDRESS;
 
   if (!privateKey || !rpcUrl || !registryAddress || !inftAddress) {
     console.error('Missing environment variables. Check your .env file.');
