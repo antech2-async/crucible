@@ -25,6 +25,7 @@ const TIER_COLOR: Record<number, string> = {
 
 const MESH_CENTER = { x: 75, y: 36 };
 const MESH_BOUNDS = { minX: 18, maxX: 132, minY: 12, maxY: 64 };
+const NODE_FIELD_SCALE = 0.78;
 
 function idHash(id: string): number {
   let h = 5381;
@@ -104,6 +105,8 @@ export function MeshVisualizer({ agents }: MeshVisualizerProps) {
     return result;
   }, [nodes]);
 
+  const nodeFieldTransform = `translate(${MESH_CENTER.x} ${MESH_CENTER.y}) scale(${NODE_FIELD_SCALE}) translate(${-MESH_CENTER.x} ${-MESH_CENTER.y})`;
+
   return (
     <div className="relative h-full w-full overflow-hidden mesh-haze">
       <div className="absolute inset-0 bg-[linear-gradient(rgba(113,215,205,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,213,151,0.035)_1px,transparent_1px)] bg-[size:34px_34px]" />
@@ -128,6 +131,44 @@ export function MeshVisualizer({ agents }: MeshVisualizerProps) {
         preserveAspectRatio="xMidYMid slice"
       >
         <defs>
+          <style>
+            {`
+              .mesh-node {
+                cursor: pointer;
+              }
+
+              .mesh-node-shell,
+              .mesh-node-card,
+              .mesh-node-rank,
+              .mesh-node-data {
+                transition: opacity 180ms ease, stroke-width 180ms ease, filter 180ms ease;
+              }
+
+              .mesh-node-hover-ring {
+                opacity: 0;
+                transition: opacity 180ms ease;
+              }
+
+              .mesh-node:hover .mesh-node-hover-ring {
+                opacity: 0.72;
+              }
+
+              .mesh-node:hover .mesh-node-shell {
+                stroke-width: 0.62;
+                filter: drop-shadow(0 0 4px currentColor);
+              }
+
+              .mesh-node:hover .mesh-node-card {
+                opacity: 1;
+                stroke-width: 0.28;
+              }
+
+              .mesh-node:hover .mesh-node-rank,
+              .mesh-node:hover .mesh-node-data {
+                opacity: 1;
+              }
+            `}
+          </style>
           <filter id="mesh-glow">
             <feGaussianBlur stdDeviation="1.4" result="coloredBlur" />
             <feMerge>
@@ -204,150 +245,173 @@ export function MeshVisualizer({ agents }: MeshVisualizerProps) {
           </path>
         </g>
 
-        {edges.map((e, i) => (
-          <g key={i}>
-            <line
-              x1={e.x1}
-              y1={e.y1}
-              x2={e.x2}
-              y2={e.y2}
-              stroke="rgba(255,213,151,0.12)"
-              strokeWidth="0.22"
-            />
-            <line
-              x1={e.x1}
-              y1={e.y1}
-              x2={e.x2}
-              y2={e.y2}
-              stroke="url(#mesh-link)"
-              strokeDasharray="2 4"
-              strokeLinecap="round"
-              strokeWidth="0.32"
-              className="opacity-35 transition-opacity duration-300 group-hover/mesh:opacity-100"
-            >
-              <animate
-                attributeName="stroke-dashoffset"
-                values="0;-15"
-                dur={`${2.8 + i * 0.18}s`}
-                repeatCount="indefinite"
+        <g transform={nodeFieldTransform}>
+          {edges.map((e, i) => (
+            <g key={i}>
+              <line
+                x1={e.x1}
+                y1={e.y1}
+                x2={e.x2}
+                y2={e.y2}
+                stroke="rgba(255,213,151,0.12)"
+                strokeWidth="0.22"
               />
-            </line>
-            <circle r="0.42" fill={i % 2 === 0 ? '#71D7CD' : '#FFD597'} opacity="0.72">
-              <animateMotion
-                dur={`${3.2 + i * 0.22}s`}
-                path={`M ${e.x1} ${e.y1} L ${e.x2} ${e.y2}`}
-                repeatCount="indefinite"
-              />
-            </circle>
-          </g>
-        ))}
-
-        {nodes.map((node, index) => (
-          <g
-            key={node.id}
-            className="transition-opacity duration-300 hover:opacity-100"
-            filter="url(#mesh-glow)"
-          >
-            <title>
-              {node.label} rank {node.rank}, score {node.scoreLabel}, tier {node.tier}
-            </title>
-            <animateTransform
-              attributeName="transform"
-              type="translate"
-              values={`0 0;${index % 2 === 0 ? 0.7 : -0.6} ${index % 3 === 0 ? -0.5 : 0.45};0 0`}
-              dur={`${5.2 + index * 0.35}s`}
-              repeatCount="indefinite"
-            />
-            <circle
-              cx={node.pos.x}
-              cy={node.pos.y}
-              r={index === 0 ? '15.5' : '11.5'}
-              fill={index === 0 ? 'url(#mesh-prime-core)' : node.color}
-              opacity={index === 0 ? '0.5' : '0.08'}
-            />
-            <circle
-              cx={node.pos.x}
-              cy={node.pos.y}
-              r={index === 0 ? '7' : node.tier >= 3 ? '5.4' : '4.8'}
-              fill="none"
-              stroke={node.color}
-              strokeWidth="0.36"
-              opacity="0.22"
-            >
-              <animate
-                attributeName="r"
-                values={`${index === 0 ? 6.4 : 4.2};${index === 0 ? 12.2 : 8.4};${index === 0 ? 6.4 : 4.2}`}
-                dur={`${3 + index * 0.25}s`}
-                repeatCount="indefinite"
-              />
-              <animate
-                attributeName="opacity"
-                values="0.16;0;0.16"
-                dur={`${3 + index * 0.25}s`}
-                repeatCount="indefinite"
-              />
-            </circle>
-            <path
-              d={`M ${node.pos.x - (index === 0 ? 4.6 : 3.6)} ${node.pos.y - (index === 0 ? 5.3 : 4.2)} L ${node.pos.x + (index === 0 ? 4.6 : 3.6)} ${node.pos.y - (index === 0 ? 5.3 : 4.2)} L ${node.pos.x + (index === 0 ? 5.8 : 4.5)} ${node.pos.y} L ${node.pos.x + (index === 0 ? 4.6 : 3.6)} ${node.pos.y + (index === 0 ? 5.3 : 4.2)} L ${node.pos.x - (index === 0 ? 4.6 : 3.6)} ${node.pos.y + (index === 0 ? 5.3 : 4.2)} L ${node.pos.x - (index === 0 ? 5.8 : 4.5)} ${node.pos.y} Z`}
-              fill="rgba(20,19,18,0.72)"
-              stroke={node.color}
-              strokeWidth="0.42"
-            />
-            <circle
-              cx={node.pos.x}
-              cy={node.pos.y}
-              r={index === 0 ? '1.55' : '1.15'}
-              fill={node.status === 'slashed' ? '#FFB4AB' : node.color}
-              opacity={node.status === 'slashed' ? 0.65 : 0.95}
-            >
-              <animate
-                attributeName="opacity"
-                values={node.status === 'slashed' ? '0.5;0.8;0.5' : '0.78;1;0.78'}
-                dur={`${2.4 + index * 0.22}s`}
-                repeatCount="indefinite"
-              />
-            </circle>
-            <text
-              x={node.pos.x}
-              y={node.pos.y - (index === 0 ? 8.8 : 7.1)}
-              textAnchor="middle"
-              className="select-none font-mono text-[3px] font-bold uppercase tracking-widest"
-              fill={node.color}
-            >
-              #{node.rank} {node.shell}
-            </text>
-            <g>
-              <rect
-                x={node.pos.x - 12.2}
-                y={node.pos.y + (index === 0 ? 8.3 : 6.7)}
-                width="24.4"
-                height="8.2"
-                rx="1"
-                fill="rgba(20,19,18,0.82)"
-                stroke="rgba(255,213,151,0.16)"
-                strokeWidth="0.15"
-              />
-              <text
-                x={node.pos.x}
-                y={node.pos.y + (index === 0 ? 11.4 : 9.8)}
-                textAnchor="middle"
-                className="select-none font-mono text-[2.45px] font-bold uppercase"
-                fill="rgba(230,226,223,0.86)"
+              <line
+                x1={e.x1}
+                y1={e.y1}
+                x2={e.x2}
+                y2={e.y2}
+                stroke="url(#mesh-link)"
+                strokeDasharray="2 4"
+                strokeLinecap="round"
+                strokeWidth="0.32"
+                className="opacity-35 transition-opacity duration-300 group-hover/mesh:opacity-100"
               >
-                {node.label}
-              </text>
-              <text
-                x={node.pos.x}
-                y={node.pos.y + (index === 0 ? 14.2 : 12.6)}
-                textAnchor="middle"
-                className="select-none font-mono text-[2px] font-bold uppercase"
-                fill={node.score >= 0.8 ? '#71D7CD' : '#FFD597'}
-              >
-                {node.scoreLabel} / T{node.tier}
-              </text>
+                <animate
+                  attributeName="stroke-dashoffset"
+                  values="0;-15"
+                  dur={`${2.8 + i * 0.18}s`}
+                  repeatCount="indefinite"
+                />
+              </line>
+              <circle r="0.42" fill={i % 2 === 0 ? '#71D7CD' : '#FFD597'} opacity="0.72">
+                <animateMotion
+                  dur={`${3.2 + i * 0.22}s`}
+                  path={`M ${e.x1} ${e.y1} L ${e.x2} ${e.y2}`}
+                  repeatCount="indefinite"
+                />
+              </circle>
             </g>
-          </g>
-        ))}
+          ))}
+
+          {nodes.map((node, index) => (
+            <g
+              key={node.id}
+              className="mesh-node transition-opacity duration-300 hover:opacity-100"
+              filter="url(#mesh-glow)"
+            >
+              <title>
+                {node.label} rank {node.rank}, score {node.scoreLabel}, tier {node.tier}
+              </title>
+              <animateTransform
+                attributeName="transform"
+                type="translate"
+                values={`0 0;${index % 2 === 0 ? 0.7 : -0.6} ${index % 3 === 0 ? -0.5 : 0.45};0 0`}
+                dur={`${5.2 + index * 0.35}s`}
+                repeatCount="indefinite"
+              />
+              <circle
+                cx={node.pos.x}
+                cy={node.pos.y}
+                r={index === 0 ? '15.5' : '11.5'}
+                fill={index === 0 ? 'url(#mesh-prime-core)' : node.color}
+                opacity={index === 0 ? '0.5' : '0.08'}
+              />
+              <circle
+                className="mesh-node-hover-ring"
+                cx={node.pos.x}
+                cy={node.pos.y}
+                r={index === 0 ? '9.8' : '7.4'}
+                fill="none"
+                stroke={node.color}
+                strokeDasharray="1.2 1.6"
+                strokeWidth="0.28"
+              >
+                <animateTransform
+                  attributeName="transform"
+                  dur="2.6s"
+                  from={`0 ${node.pos.x} ${node.pos.y}`}
+                  repeatCount="indefinite"
+                  to={`360 ${node.pos.x} ${node.pos.y}`}
+                  type="rotate"
+                />
+              </circle>
+              <circle
+                cx={node.pos.x}
+                cy={node.pos.y}
+                r={index === 0 ? '7' : node.tier >= 3 ? '5.4' : '4.8'}
+                fill="none"
+                stroke={node.color}
+                strokeWidth="0.36"
+                opacity="0.22"
+              >
+                <animate
+                  attributeName="r"
+                  values={`${index === 0 ? 6.4 : 4.2};${index === 0 ? 12.2 : 8.4};${index === 0 ? 6.4 : 4.2}`}
+                  dur={`${3 + index * 0.25}s`}
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0.16;0;0.16"
+                  dur={`${3 + index * 0.25}s`}
+                  repeatCount="indefinite"
+                />
+              </circle>
+              <path
+                className="mesh-node-shell"
+                d={`M ${node.pos.x - (index === 0 ? 4.6 : 3.6)} ${node.pos.y - (index === 0 ? 5.3 : 4.2)} L ${node.pos.x + (index === 0 ? 4.6 : 3.6)} ${node.pos.y - (index === 0 ? 5.3 : 4.2)} L ${node.pos.x + (index === 0 ? 5.8 : 4.5)} ${node.pos.y} L ${node.pos.x + (index === 0 ? 4.6 : 3.6)} ${node.pos.y + (index === 0 ? 5.3 : 4.2)} L ${node.pos.x - (index === 0 ? 4.6 : 3.6)} ${node.pos.y + (index === 0 ? 5.3 : 4.2)} L ${node.pos.x - (index === 0 ? 5.8 : 4.5)} ${node.pos.y} Z`}
+                fill="rgba(20,19,18,0.72)"
+                stroke={node.color}
+                strokeWidth="0.42"
+              />
+              <circle
+                cx={node.pos.x}
+                cy={node.pos.y}
+                r={index === 0 ? '1.55' : '1.15'}
+                fill={node.status === 'slashed' ? '#FFB4AB' : node.color}
+                opacity={node.status === 'slashed' ? 0.65 : 0.95}
+              >
+                <animate
+                  attributeName="opacity"
+                  values={node.status === 'slashed' ? '0.5;0.8;0.5' : '0.78;1;0.78'}
+                  dur={`${2.4 + index * 0.22}s`}
+                  repeatCount="indefinite"
+                />
+              </circle>
+              <text
+                className="mesh-node-rank select-none font-mono text-[2.25px] font-bold uppercase tracking-widest opacity-80"
+                x={node.pos.x}
+                y={node.pos.y - (index === 0 ? 8.3 : 6.8)}
+                textAnchor="middle"
+                fill={node.color}
+              >
+                #{node.rank} {node.shell}
+              </text>
+              <g>
+                <rect
+                  className="mesh-node-card"
+                  x={node.pos.x - 12.2}
+                  y={node.pos.y + (index === 0 ? 8.3 : 6.7)}
+                  width="24.4"
+                  height="8.2"
+                  rx="1"
+                  fill="rgba(20,19,18,0.82)"
+                  stroke="rgba(255,213,151,0.16)"
+                  strokeWidth="0.15"
+                />
+                <text
+                  className="mesh-node-data select-none font-mono text-[1.95px] font-bold uppercase opacity-90"
+                  x={node.pos.x}
+                  y={node.pos.y + (index === 0 ? 11.15 : 9.55)}
+                  textAnchor="middle"
+                  fill="rgba(230,226,223,0.86)"
+                >
+                  {node.label}
+                </text>
+                <text
+                  className="mesh-node-data select-none font-mono text-[1.65px] font-bold uppercase opacity-90"
+                  x={node.pos.x}
+                  y={node.pos.y + (index === 0 ? 13.75 : 12.15)}
+                  textAnchor="middle"
+                  fill={node.score >= 0.8 ? '#71D7CD' : '#FFD597'}
+                >
+                  {node.scoreLabel} / T{node.tier}
+                </text>
+              </g>
+            </g>
+          ))}
+        </g>
       </svg>
     </div>
   );
