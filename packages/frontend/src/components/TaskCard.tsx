@@ -50,6 +50,8 @@ export default function TaskCard({ taskId, auditReport }: { taskId?: number; aud
   const mins = Math.floor((diff % 3600000) / 60000);
   const timeStr = isExpired ? 'Expired' : `${hrs}h ${mins}m`;
   const proofHref = `/tasks?filter=${filterForStatus(status)}&task=${taskId}#tee-proof`;
+  const failedReasons = getFailedAuditReasons(auditReport);
+  const statusNote = getStatusNote(status, failedReasons);
 
   return (
     <Surface level="container" className="p-5">
@@ -73,6 +75,18 @@ export default function TaskCard({ taskId, auditReport }: { taskId?: number; aud
         </div>
       </div>
 
+      {statusNote ? (
+        <div
+          className={`mb-4 border p-3 text-[10px] leading-relaxed ${
+            status === TaskStatus.FAILED
+              ? 'border-danger/20 bg-danger/10 text-danger'
+              : 'border-border bg-surface/45 text-on-surface-muted'
+          }`}
+        >
+          <p className="font-mono uppercase tracking-widest">{statusNote}</p>
+        </div>
+      ) : null}
+
       {auditReport && auditReport.results && auditReport.results.some((r: any) => !r.passed) && (
         <div className="bg-danger/10 border border-danger/20 p-3 mb-4 space-y-1.5">
           <p className="text-[9px] font-mono uppercase tracking-widest text-danger font-bold mb-1">
@@ -82,8 +96,10 @@ export default function TaskCard({ taskId, auditReport }: { taskId?: number; aud
             .filter((r: any) => !r.passed)
             .map((r: any, i: number) => (
               <div key={i} className="text-[10px] font-mono text-on-surface leading-tight">
-                Agent {r.agent.slice(0, 6)}:{' '}
-                <span className="text-danger-muted">{r.reasons.join(', ')}</span>
+                Agent {shortAddress(r.agent)}:{' '}
+                <span className="text-danger-muted">
+                  {Array.isArray(r.reasons) ? r.reasons.join(', ') : 'Audit failed'}
+                </span>
               </div>
             ))}
         </div>
@@ -106,6 +122,9 @@ export default function TaskCard({ taskId, auditReport }: { taskId?: number; aud
           Status: {statusStr}
         </span>
       </div>
+      <p className="mt-2 text-center font-mono text-[8px] uppercase tracking-widest text-on-surface-dim">
+        Source: TaskEscrow + 0G Storage audit
+      </p>
     </Surface>
   );
 }
@@ -121,4 +140,27 @@ function filterForStatus(status: number) {
     return 'completed';
   }
   return 'open';
+}
+
+function getFailedAuditReasons(auditReport: any) {
+  const results = Array.isArray(auditReport?.results) ? auditReport.results : [];
+  return results
+    .filter((result: any) => !result?.passed)
+    .flatMap((result: any) => (Array.isArray(result?.reasons) ? result.reasons : []))
+    .filter(Boolean);
+}
+
+function getStatusNote(status: number, failedReasons: string[]) {
+  if (status === TaskStatus.FAILED) {
+    return failedReasons[0]
+      ? `Failed: ${failedReasons[0]}`
+      : 'Failed: no passing proof trail recorded';
+  }
+  if (status === TaskStatus.VERIFYING) return 'Waiting for audit and slashing judge resolution';
+  return null;
+}
+
+function shortAddress(address?: string) {
+  if (!address) return '-';
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }

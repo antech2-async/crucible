@@ -72,20 +72,20 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
     if (isConfirmed) onPosted?.();
   }, [isConfirmed, onPosted]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // 1. Upload criteria to 0G Storage via API
     try {
-        const uploadRes = await fetch('/api/upload-criteria', {
-            method: 'POST',
-            body: JSON.stringify(criteriaPayload),
-            headers: { 'Content-Type': 'application/json' },
-        });
-        if (!uploadRes.ok) throw new Error('0G Criteria Upload failed');
-        console.log('Criteria successfully committed to 0G Storage');
+      const uploadRes = await fetch('/api/upload-criteria', {
+        method: 'POST',
+        body: JSON.stringify(criteriaPayload),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!uploadRes.ok) throw new Error('0G Criteria Upload failed');
+      console.log('Criteria successfully committed to 0G Storage');
     } catch (err) {
-        console.error('Criteria storage failed, but proceeding with chain tx...', err);
+      console.error('Criteria storage failed, but proceeding with chain tx...', err);
     }
 
     const deadlineSeconds =
@@ -114,7 +114,7 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
           <CheckCircle2 className="text-secondary" size={24} />
         </div>
         <h3 className="font-display text-xl font-black uppercase tracking-tight text-on-surface">
-          Escrow Posted
+          Task Posted
         </h3>
         <p className="mt-2 break-all font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
           Tx {hash?.slice(0, 10)}...{hash?.slice(-8)}
@@ -140,8 +140,11 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
             New Escrow Task
           </div>
           <h2 className="font-display text-2xl font-black tracking-tight text-on-surface">
-            Engage Escrow Protocol
+            Post New Task
           </h2>
+          <p className="mt-1 text-xs text-on-surface-dim">
+            Criteria are committed to 0G Storage before the TaskEscrow transaction.
+          </p>
         </div>
         <ShieldCheck size={20} className="mt-1 text-primary/45" />
       </div>
@@ -274,7 +277,7 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
         >
           {isPending || isConfirming ? (
             <>
-              Sealing Escrow <Loader2 className="animate-spin" size={14} />
+              Posting Task <Loader2 className="animate-spin" size={14} />
             </>
           ) : (
             <>

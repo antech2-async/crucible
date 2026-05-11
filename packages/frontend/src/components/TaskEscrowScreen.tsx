@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 
 type TaskCategory = 'open' | 'verifying' | 'completed';
 type VerificationMode = 'tee-attestation' | 'hash-commitment' | 'missing';
+type StepState = 'complete' | 'active' | 'pending' | 'danger';
 
 export type TaskProof = {
   agent: string;
@@ -283,14 +284,14 @@ export default function TaskEscrowScreen({
         <div className="max-w-3xl">
           <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
             <Hexagon size={13} />
-            Crucible Hub / Escrow Registry
+            Tasks / TaskEscrow Contract
           </div>
           <h1 className="font-display text-4xl font-black uppercase tracking-tight text-on-surface md:text-5xl">
-            Escrow Coordination
+            Task Escrow
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-on-surface-muted">
-            Task escrow, agent assignment, verification status, and locked collateral pulled from
-            the TaskEscrow contract.
+            Live task escrow, assignment, verification status, and locked collateral. Contract state
+            comes from TaskEscrow; audit records come from 0G Storage when available.
           </p>
         </div>
       </header>
@@ -338,13 +339,15 @@ export default function TaskEscrowScreen({
                   <HeroMetric label="Deadline" value={formatDeadline(selectedTask.deadline)} />
                 </div>
 
+                <TaskLifecycle task={selectedTask} />
+
                 <div className="flex flex-wrap items-center gap-3">
                   <a
                     href={`#${CREATE_ESCROW_MODAL_ID}`}
                     onClick={openCreateModal}
                     className="inline-flex min-h-11 items-center justify-center rounded bg-primary px-6 font-display text-sm font-black text-on-primary transition-colors hover:bg-primary-muted"
                   >
-                    Engage Escrow Protocol
+                    Post New Task
                   </a>
                   <button
                     type="button"
@@ -376,7 +379,7 @@ export default function TaskEscrowScreen({
               <div>
                 <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
                   <FileText size={14} className="text-primary" />
-                  Escrow Registry
+                  Task Registry
                 </div>
                 <p className="mt-1 text-xs text-on-surface-dim">
                   Latest tasks from the TaskEscrow contract.
@@ -474,6 +477,14 @@ function HeroMetric({
   );
 }
 
+function SourceBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded border border-border-strong/15 bg-surface px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-on-surface-dim">
+      {children}
+    </span>
+  );
+}
+
 function LoadingPanel() {
   return (
     <div className="flex min-h-[320px] items-center justify-center p-8">
@@ -498,8 +509,99 @@ function EmptyPanel({ onCreate }: { onCreate: () => void }) {
           onClick={onCreate}
           className="mt-6 inline-flex min-h-11 items-center justify-center rounded bg-primary px-6 font-display text-sm font-black text-on-primary transition-colors hover:bg-primary-muted"
         >
-          Engage Escrow Protocol
+          Post New Task
         </a>
+      </div>
+    </div>
+  );
+}
+
+function TaskLifecycle({ task }: { task: EscrowTask }) {
+  const steps: Array<{ label: string; detail: string; state: StepState }> = [
+    {
+      label: 'Posted',
+      detail: `Poster ${shortAddress(task.poster)}`,
+      state: 'complete',
+    },
+    {
+      label: 'Assigned',
+      detail: task.assignedAgents.length
+        ? `${task.assignedAgents.length} agent${task.assignedAgents.length === 1 ? '' : 's'} locked`
+        : 'Waiting for assignment',
+      state:
+        task.status >= TaskStatus.ASSIGNED || task.assignedAgents.length > 0
+          ? 'complete'
+          : 'active',
+    },
+    {
+      label: 'Submitted',
+      detail: `${task.submittedCount}/${task.assignedAgents.length || 0} outputs`,
+      state:
+        task.submittedCount > 0
+          ? 'complete'
+          : task.status === TaskStatus.ASSIGNED || task.status === TaskStatus.IN_PIPELINE
+            ? 'active'
+            : 'pending',
+    },
+    {
+      label: 'Verified',
+      detail: getTaskMeta(task.status).description,
+      state:
+        task.status === TaskStatus.VERIFYING
+          ? 'active'
+          : [
+                TaskStatus.COMPLETED,
+                TaskStatus.PARTIALLY_COMPLETED,
+                TaskStatus.DISPUTED,
+                TaskStatus.FAILED,
+              ].includes(task.status)
+            ? task.status === TaskStatus.FAILED || task.status === TaskStatus.DISPUTED
+              ? 'danger'
+              : 'complete'
+            : 'pending',
+    },
+    {
+      label: 'Resolved',
+      detail: getResolutionDetail(task),
+      state:
+        task.status === TaskStatus.COMPLETED || task.status === TaskStatus.PARTIALLY_COMPLETED
+          ? 'complete'
+          : task.status === TaskStatus.FAILED || task.status === TaskStatus.DISPUTED
+            ? 'danger'
+            : 'pending',
+    },
+  ];
+
+  return (
+    <div className="mb-5 rounded border border-border-strong/10 bg-surface/45 p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
+          Task Lifecycle
+        </p>
+        <SourceBadge>Source: TaskEscrow</SourceBadge>
+      </div>
+      <div className="grid gap-3 md:grid-cols-5">
+        {steps.map((step) => (
+          <div key={step.label} className="min-w-0">
+            <div className="mb-2 flex items-center gap-2">
+              <span
+                className={cn(
+                  'h-2.5 w-2.5 rounded-full border',
+                  step.state === 'complete' && 'border-secondary bg-secondary',
+                  step.state === 'active' && 'border-primary bg-primary',
+                  step.state === 'danger' && 'border-danger bg-danger',
+                  step.state === 'pending' && 'border-border bg-transparent',
+                )}
+              />
+              <p className="truncate font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
+                {step.label}
+              </p>
+            </div>
+            <p className="line-clamp-2 text-xs leading-relaxed text-on-surface-muted">
+              {step.detail}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -529,6 +631,10 @@ function TeeProofPanel({ task }: { task: EscrowTask }) {
             attestation bytes. External or failed submissions are shown as hash commitments or
             missing proofs.
           </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <SourceBadge>Source: TaskEscrow proof mappings</SourceBadge>
+            <SourceBadge>Audit: 0G Storage when present</SourceBadge>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <StatusBadge status={task.status} />
@@ -558,7 +664,9 @@ function TeeProofPanel({ task }: { task: EscrowTask }) {
         <div className="p-5">
           <div className="rounded border border-dashed border-border p-5 text-center">
             <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
-              No assigned agents yet
+              {task.assignedAgents.length
+                ? 'No proof records returned yet'
+                : 'No assigned agents yet'}
             </p>
           </div>
         </div>
@@ -594,6 +702,9 @@ function ProofRow({ proof }: { proof: TaskProof }) {
   return (
     <div className="grid gap-4 p-5 lg:grid-cols-[0.9fr_1.4fr]">
       <div className="min-w-0">
+        <p className="mb-3 font-mono text-[9px] font-bold uppercase tracking-widest text-on-surface-dim">
+          Agent Identity
+        </p>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="rounded border border-border-strong/20 px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
             {shortAddress(proof.agent)}
@@ -627,8 +738,11 @@ function ProofRow({ proof }: { proof: TaskProof }) {
       </div>
 
       <div className="min-w-0 space-y-3">
+        <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-on-surface-dim">
+          Verification Trail
+        </p>
         <ProofField
-          label="Output Hash / 0G Storage Commitment"
+          label="On-chain Output Hash / 0G Storage Commitment"
           value={proof.outputHash || 'No output hash recorded'}
         />
         {proof.verificationMode === 'tee-attestation' ? (
@@ -636,7 +750,7 @@ function ProofRow({ proof }: { proof: TaskProof }) {
         ) : (
           <div className="rounded border border-border-strong/10 bg-surface/45 p-3">
             <p className="font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
-              TEE Attestation
+              TEE Attestation Record
             </p>
             <p className="mt-2 text-xs leading-relaxed text-on-surface-muted">
               {modeMeta.description}
@@ -685,7 +799,7 @@ function EscrowHealthPanel({ task }: { task: EscrowTask | null }) {
     <section className="panel-interactive rounded-lg border border-border-strong/15 bg-surface-low p-5 shadow-[0_18px_40px_-30px_rgba(255,213,151,0.2)]">
       <div className="mb-5 flex items-center justify-between gap-4">
         <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
-          Risk Profile
+          Stake Coverage
         </p>
         <Gauge size={20} className="text-primary/45" />
       </div>
@@ -731,7 +845,7 @@ function ProtocolPanel({
       <div className="mb-5 flex items-center justify-between">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
-            Staking Criteria
+            TaskEscrow Settings
           </p>
           <p className="mt-1 text-xs text-on-surface-dim">Contract parameters</p>
         </div>
@@ -776,7 +890,7 @@ function AgentPoolPanel({ task, onCreate }: { task: EscrowTask | null; onCreate:
       <div className="mb-5 flex items-center justify-between">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
-            Agent Pool Ready
+            Assigned Agents
           </p>
           <p className="mt-1 text-xs text-on-surface-dim">
             {task ? `${task.assignedAgents.length} assigned nodes` : 'No task selected'}
@@ -951,7 +1065,7 @@ function TaskRegistry({
 
             <div>
               <p className="font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
-                Escrow
+                Payout
               </p>
               <p className="mt-1 font-mono text-sm font-bold text-on-surface">
                 {formatTokenAmount(task.totalPayment)}
@@ -1007,11 +1121,35 @@ function getTaskMeta(status: number) {
 }
 
 function taskHeading(task: EscrowTask) {
-  return `${getTaskMeta(task.status).label} Escrow`;
+  return `${getTaskMeta(task.status).label} Task`;
 }
 
 function taskIdentity(task: EscrowTask) {
-  return `Escrow ID #${String(task.id).padStart(3, '0')}`;
+  return `Task #${String(task.id).padStart(3, '0')}`;
+}
+
+function getResolutionDetail(task: EscrowTask) {
+  if (task.status === TaskStatus.COMPLETED) return 'Paid to successful agents';
+  if (task.status === TaskStatus.PARTIALLY_COMPLETED) return 'Paid with failed agents excluded';
+  if (task.status === TaskStatus.FAILED) return getPrimaryFailureReason(task);
+  if (task.status === TaskStatus.DISPUTED) return 'Poster dispute active';
+  return 'Not resolved yet';
+}
+
+function getPrimaryFailureReason(task: EscrowTask) {
+  const results = Array.isArray(task.auditReport?.results) ? task.auditReport.results : [];
+  const failed = results.find((result: any) => !result?.passed);
+  if (Array.isArray(failed?.reasons) && failed.reasons.length > 0) {
+    return failed.reasons[0];
+  }
+
+  const missingProof = task.proofs.find((proof) => proof.verificationMode === 'missing');
+  if (missingProof) return 'No proof or output hash recorded';
+
+  const hashOnly = task.proofs.find((proof) => proof.verificationMode === 'hash-commitment');
+  if (hashOnly) return 'Hash commitment only; no TEE attestation recorded';
+
+  return 'No passing audit recorded';
 }
 
 function sumBigints(values: bigint[]) {
