@@ -221,7 +221,7 @@ export default function Arena() {
           }
         />
 
-        <div className="relative h-[260px] overflow-hidden md:h-[280px] lg:h-[260px]">
+        <div className="relative min-h-[260px] flex-1 overflow-hidden">
           <div className="readout-pulse absolute left-6 top-6 z-20 space-y-1 font-mono text-[9px] uppercase tracking-[0.08em] text-on-surface-muted/35 transition-colors duration-300 group-hover/mesh:text-secondary/70">
             <div>AGENT_STREAM: {topMeshAgents.length ? 'LOCKED' : 'AWAITING'}</div>
             <div>SORT: TRUST_SCORE_DESC</div>

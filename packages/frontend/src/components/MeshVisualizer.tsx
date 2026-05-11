@@ -23,6 +23,9 @@ const TIER_COLOR: Record<number, string> = {
   0: '#7f725f',
 };
 
+const MESH_CENTER = { x: 75, y: 36 };
+const MESH_BOUNDS = { minX: 18, maxX: 132, minY: 12, maxY: 64 };
+
 function idHash(id: string): number {
   let h = 5381;
   for (let i = 0; i < id.length; i++) h = ((h << 5) + h + id.charCodeAt(i)) | 0;
@@ -35,22 +38,28 @@ function shortId(value: string) {
 }
 
 function rankedPos(id: string, index: number, total: number) {
-  if (total === 1) return { x: 70, y: 35 };
+  if (total === 1) return MESH_CENTER;
 
   const anchors = [
-    { x: 70, y: 35 },
-    { x: 36, y: 25 },
-    { x: 104, y: 25 },
-    { x: 46, y: 54 },
-    { x: 94, y: 54 },
+    MESH_CENTER,
+    { x: 42, y: 24 },
+    { x: 108, y: 24 },
+    { x: 52, y: 55 },
+    { x: 98, y: 55 },
   ];
   const h = idHash(id);
   const anchor = anchors[index] ?? anchors[anchors.length - 1];
-  const jitter = index === 0 ? 0 : 3.5;
+  const jitter = index === 0 ? 0 : 4.5;
 
   return {
-    x: Math.max(14, Math.min(126, anchor.x + ((h % 100) / 100 - 0.5) * jitter)),
-    y: Math.max(10, Math.min(62, anchor.y + (((h >> 5) % 100) / 100 - 0.5) * jitter)),
+    x: Math.max(
+      MESH_BOUNDS.minX,
+      Math.min(MESH_BOUNDS.maxX, anchor.x + ((h % 100) / 100 - 0.5) * jitter),
+    ),
+    y: Math.max(
+      MESH_BOUNDS.minY,
+      Math.min(MESH_BOUNDS.maxY, anchor.y + (((h >> 5) % 100) / 100 - 0.5) * jitter),
+    ),
   };
 }
 
@@ -114,9 +123,9 @@ export function MeshVisualizer({ agents }: MeshVisualizerProps) {
       ) : null}
 
       <svg
-        viewBox="0 0 140 70"
+        viewBox="0 0 150 74"
         className="relative z-10 h-full w-full overflow-visible"
-        preserveAspectRatio="xMidYMid meet"
+        preserveAspectRatio="xMidYMid slice"
       >
         <defs>
           <filter id="mesh-glow">
@@ -140,49 +149,56 @@ export function MeshVisualizer({ agents }: MeshVisualizerProps) {
 
         <g opacity="0.38">
           <circle
-            cx="70"
-            cy="35"
+            cx={MESH_CENTER.x}
+            cy={MESH_CENTER.y}
             r="11"
             fill="none"
             stroke="rgba(113,215,205,0.12)"
             strokeWidth="0.18"
           />
           <circle
-            cx="70"
-            cy="35"
-            r="22"
+            cx={MESH_CENTER.x}
+            cy={MESH_CENTER.y}
+            r="27"
             fill="none"
             stroke="rgba(255,213,151,0.09)"
             strokeWidth="0.16"
           />
           <circle
-            cx="70"
-            cy="35"
-            r="34"
+            cx={MESH_CENTER.x}
+            cy={MESH_CENTER.y}
+            r="45"
             fill="none"
             stroke="rgba(113,215,205,0.08)"
             strokeWidth="0.14"
           />
           <line
             x1="10"
-            x2="130"
-            y1="35"
-            y2="35"
+            x2="140"
+            y1={MESH_CENTER.y}
+            y2={MESH_CENTER.y}
             stroke="rgba(113,215,205,0.08)"
             strokeWidth="0.14"
           />
-          <line x1="70" x2="70" y1="4" y2="66" stroke="rgba(255,213,151,0.08)" strokeWidth="0.14" />
+          <line
+            x1={MESH_CENTER.x}
+            x2={MESH_CENTER.x}
+            y1="4"
+            y2="70"
+            stroke="rgba(255,213,151,0.08)"
+            strokeWidth="0.14"
+          />
           <path
-            d="M 70 35 L 70 1 A 34 34 0 0 1 94 11 Z"
+            d={`M ${MESH_CENTER.x} ${MESH_CENTER.y} L ${MESH_CENTER.x} 3 A 45 45 0 0 1 108 16 Z`}
             fill="rgba(113,215,205,0.09)"
             className="origin-center"
           >
             <animateTransform
               attributeName="transform"
               dur="8s"
-              from="0 70 35"
+              from={`0 ${MESH_CENTER.x} ${MESH_CENTER.y}`}
               repeatCount="indefinite"
-              to="360 70 35"
+              to={`360 ${MESH_CENTER.x} ${MESH_CENTER.y}`}
               type="rotate"
             />
           </path>
