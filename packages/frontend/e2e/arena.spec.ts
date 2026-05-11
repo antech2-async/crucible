@@ -15,20 +15,20 @@ test.describe('Crucible Arena E2E Verification', () => {
     await expect(page.getByText(/Crucible network coordination/i)).toBeVisible();
 
     // 3. Verify the coordination mesh panel is present.
-    await expect(page.getByText('Coordination Mesh', { exact: true })).toBeVisible();
-    await expect(page.getByText(/Agents: \d+/i)).toBeVisible();
+    await expect(page.getByText('Agent Trust Mesh', { exact: true })).toBeVisible();
+    await expect(page.getByText(/Registered: \d+/i)).toBeVisible();
 
     // 4. Verify Metric Cards are rendered
-    await expect(page.getByText('System Load', { exact: true })).toBeVisible();
-    await expect(page.getByText('Active Nodes', { exact: true })).toBeVisible();
-    await expect(page.getByText('Mesh Stability', { exact: true })).toBeVisible();
+    await expect(page.getByText('Avg Trust Score', { exact: true })).toBeVisible();
+    await expect(page.getByText('Registered Agents', { exact: true })).toBeVisible();
+    await expect(page.getByText('Trust Health', { exact: true })).toBeVisible();
 
     // 5. Verify live operational panels exist
-    await expect(page.getByText('Live Events Feed', { exact: true })).toBeVisible();
-    await expect(page.getByText('Critical Agents', { exact: true })).toBeVisible();
+    await expect(page.getByText('Contract Events', { exact: true })).toBeVisible();
+    await expect(page.getByText('Top Trusted Agents', { exact: true })).toBeVisible();
 
     // 6. Verify latest task proof drill-down is wired.
-    await expect(page.getByText('Latest Network Task', { exact: true })).toBeVisible();
+    await expect(page.getByText('Latest TaskEscrow Task', { exact: true })).toBeVisible();
     const proofLink = page.getByRole('link', { name: /View Full TEE Proof/i });
     await expect(proofLink).toHaveAttribute(
       'href',

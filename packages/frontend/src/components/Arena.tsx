@@ -32,28 +32,10 @@ type DashboardAgent = {
 
 const FALLBACK_EVENTS = [
   {
-    ts: '12:44:02',
-    type: 'Node Handshake',
-    desc: 'Success: AGENT_77X connected to Sector 4',
-    tone: 'secondary',
-  },
-  {
-    ts: '12:43:58',
-    type: 'Validation Proof Generated',
-    desc: 'Epoch #8841-A: Hash verification confirmed',
-    tone: 'primary',
-  },
-  {
-    ts: '12:43:41',
-    type: 'State Update',
-    desc: 'Industrial throughput adjusted to 104%',
+    ts: '--:--:--',
+    type: 'No contract events yet',
+    desc: 'Waiting for TaskEscrow or AgentRegistry events from this browser session.',
     tone: 'neutral',
-  },
-  {
-    ts: '12:43:22',
-    type: 'Mesh Rebalance',
-    desc: '32 nodes re-routed for optimal latency',
-    tone: 'secondary',
   },
 ];
 
@@ -88,8 +70,10 @@ export default function Arena() {
         [
           {
             ts,
-            type: isSlash ? 'Agent Defection' : log.eventName,
-            desc: isSlash ? 'Slashing Judge executed collateral penalty' : '0G event committed',
+            type: isSlash ? 'Agent slashed' : log.eventName,
+            desc: isSlash
+              ? 'TaskEscrow emitted AgentSlashed for a failed task'
+              : 'TaskEscrow event observed on 0G Galileo',
             tone: isSlash ? 'danger' : 'secondary',
           },
           ...prev,
@@ -114,7 +98,7 @@ export default function Arena() {
             {
               ts,
               type: 'Trust Tier Updated',
-              desc: 'Agent reliability terms recalibrated',
+              desc: 'AgentRegistry trust tier changed for a registered agent',
               tone: 'primary',
             },
             ...prev,
@@ -180,9 +164,9 @@ export default function Arena() {
   const trustHealth = !agents.length
     ? 'Awaiting'
     : avgTrust > 0.8
-      ? 'Nominal'
+      ? 'Healthy'
       : avgTrust > 0.5
-        ? 'Degraded'
+        ? 'Watch'
         : 'Critical';
   const trustHealthColor = !agents.length
     ? 'text-on-surface-muted'
@@ -212,20 +196,20 @@ export default function Arena() {
       >
         <PanelHeader
           icon={<Share2 size={18} className="text-primary" />}
-          title="Coordination Mesh"
+          title="Agent Trust Mesh"
           actions={
             <div className="flex min-w-0 flex-wrap justify-end gap-2">
-              <StatusPill tone="secondary">Top Mesh: {topMeshAgents.length}/5</StatusPill>
-              <StatusPill tone="primary">Agents: {activeNodes}</StatusPill>
+              <StatusPill tone="secondary">Top Agents: {topMeshAgents.length}/5</StatusPill>
+              <StatusPill tone="primary">Registered: {activeNodes}</StatusPill>
             </div>
           }
         />
 
         <div className="relative h-[260px] overflow-hidden md:h-[280px] lg:h-[260px]">
           <div className="readout-pulse absolute left-6 top-6 z-20 space-y-1 font-mono text-[9px] uppercase tracking-[0.08em] text-on-surface-muted/35 transition-colors duration-300 group-hover/mesh:text-secondary/70">
-            <div>AGENT_STREAM: {topMeshAgents.length ? 'LOCKED' : 'AWAITING'}</div>
+            <div>AGENT_STREAM: {topMeshAgents.length ? 'SYNCED' : 'AWAITING'}</div>
             <div>SORT: TRUST_SCORE_DESC</div>
-            <div>SOURCE: /API/AGENTS</div>
+            <div>SOURCE: /API/AGENTS + AGENTREGISTRY</div>
             <div className="mt-3 flex gap-1.5 opacity-0 transition-opacity duration-300 group-hover/mesh:opacity-100">
               {[0, 1, 2, 3].map((index) => (
                 <span
@@ -241,25 +225,25 @@ export default function Arena() {
 
         <div className="grid grid-cols-3 gap-4 border-t border-border-strong/10 bg-surface/55 p-5">
           <StatFooter
-            label="Sync Status"
+            label="Agent Sync"
             value={topMeshAgents.length ? 'Live' : 'Awaiting'}
             tone="secondary"
           />
-          <StatFooter label="Network Load" value={networkLoad} />
-          <StatFooter label="Mesh Integrity" value={meshIntegrity} tone="primary" />
+          <StatFooter label="Posted Tasks" value={networkLoad} />
+          <StatFooter label="Average Trust" value={meshIntegrity} tone="primary" />
         </div>
       </section>
 
       <section className="col-span-12 grid self-start gap-5 md:grid-cols-3 lg:col-span-4 lg:grid-cols-1">
         <MetricCard
-          label="System Load"
+          label="Avg Trust Score"
           value={systemLoad.str}
           icon={<Gauge size={22} className="text-on-surface-muted/35" />}
           barValue={systemLoad.val}
           tone="primary"
         />
         <MetricCard
-          label="Active Nodes"
+          label="Registered Agents"
           value={activeNodes}
           icon={<Cpu size={21} className="text-secondary/45" />}
           segmented
@@ -269,7 +253,7 @@ export default function Arena() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div className="min-w-0 space-y-1">
               <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface-muted/55">
-                Mesh Stability
+                Trust Health
               </h3>
               <div
                 className={cn(
@@ -283,7 +267,7 @@ export default function Arena() {
             <ShieldCheck size={21} className="shrink-0 text-primary-muted/40" />
           </div>
           <p className="text-xs italic leading-relaxed text-on-surface-muted/40">
-            All protocol handshakes verified. Zero drift detected in sub-layer consensus.
+            Derived from AgentRegistry history, recent honest completions, and slash events.
           </p>
         </div>
 
@@ -291,11 +275,11 @@ export default function Arena() {
         {taskCountValue > 0 ? (
           <div className="mt-2">
             <h3 className="mb-3 font-display text-[11px] font-bold uppercase tracking-widest text-on-surface-muted/70">
-              Latest Network Task
+              Latest TaskEscrow Task
             </h3>
-            <TaskCard 
-              taskId={taskCountValue - 1} 
-              auditReport={latestTasks.find(t => t.id === taskCountValue - 1)?.auditReport} 
+            <TaskCard
+              taskId={taskCountValue - 1}
+              auditReport={latestTasks.find((t) => t.id === taskCountValue - 1)?.auditReport}
             />
           </div>
         ) : null}
@@ -305,11 +289,11 @@ export default function Arena() {
         <PanelHeader
           compact
           icon={<FileText size={14} className="text-on-surface-muted/70" />}
-          title="Live Events Feed"
+          title="Contract Events"
           actions={
             <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-secondary">
               <span className="h-1.5 w-1.5 rounded-full bg-secondary animate-pulse" />
-              Streaming
+              Watching
             </span>
           }
         />
@@ -323,13 +307,13 @@ export default function Arena() {
       <section className="panel-interactive col-span-12 min-h-[260px] overflow-hidden rounded-xl border border-border-strong/10 bg-surface-low p-6 shadow-[0_18px_34px_-28px_rgba(255,213,151,0.22)] hover:border-secondary/20 lg:col-span-8">
         <div className="mb-7 flex items-center justify-between gap-4">
           <h3 className="font-display text-sm font-black uppercase tracking-widest text-on-surface">
-            Critical Agents
+            Top Trusted Agents
           </h3>
           <Link
             href="/agents"
             className="flex shrink-0 items-center gap-1 rounded border border-primary/20 px-3 py-1 font-mono text-[9px] uppercase tracking-widest text-primary transition-colors hover:bg-primary/5"
           >
-            View All Directory <ChevronRight size={11} />
+            View Agent Registry <ChevronRight size={11} />
           </Link>
         </div>
         <div className="space-y-6">
@@ -526,8 +510,8 @@ function CriticalAgentRow({ agent }: { agent: DashboardAgent }) {
   const isStable = score >= 90;
   const tone = isStable ? 'secondary' : 'primary';
   const displayName = agent.id.startsWith('0x') ? shortAddress(agent.id) : agent.id;
-  const agentClass = agent.class === 'native' ? 'Native INFT' : 'External Agent';
-  const subtitle = `${agentClass} / ${agent.tasks ?? 0} tasks`;
+  const agentClass = agent.class === 'native' ? 'Native agent' : 'External agent';
+  const subtitle = `${agentClass} / ${agent.tasks ?? 0} completed tasks`;
 
   return (
     <div className="group/agent grid min-w-0 grid-cols-1 items-center gap-4 rounded-lg px-2 py-1 transition-colors duration-200 hover:bg-surface-container/50 md:grid-cols-[minmax(0,1fr)_minmax(160px,2fr)_auto] md:gap-6">

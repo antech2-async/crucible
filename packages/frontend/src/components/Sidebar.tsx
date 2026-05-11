@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Tasks', href: '/tasks', icon: FileText },
   { name: 'Stake', href: '/stake', icon: Coins },
-  { name: 'Docs', href: '/admin', icon: Settings },
+  { name: 'Admin', href: '/admin', icon: Settings },
 ];
 
 interface SidebarProps {
@@ -80,7 +80,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             className="flex items-center gap-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-on-surface/35 transition-colors hover:text-primary"
           >
             <Terminal size={14} />
-            Logs
+            Task Log
           </Link>
         </div>
       </aside>
