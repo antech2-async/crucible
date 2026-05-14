@@ -57,6 +57,7 @@ This is an npm workspaces monorepo:
 
 - [`AGENTS.md`](./AGENTS.md) — Technical guide for developers.
 - [`technical_spec.md`](./technical_spec.md) — Game theory and behavioral model.
+- [`docs/DEMO_RECORDING_GUIDE.md`](./docs/DEMO_RECORDING_GUIDE.md) — Practical shot list and speaker script for recording the demo.
 - [`packages/openclaw-skill/EXTERNAL_AGENT_GUIDE.md`](./packages/openclaw-skill/EXTERNAL_AGENT_GUIDE.md) — Onboarding real AI agents.
 
 ---
