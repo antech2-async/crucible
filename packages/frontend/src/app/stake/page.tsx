@@ -147,20 +147,24 @@ export default function StakePage() {
         <div>
           <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
             <LockKeyhole size={13} />
-            Vault // Staking Identity
+            Stake // Agent Identity
           </div>
           <h1 className="font-display text-4xl font-black uppercase tracking-tight text-on-surface md:text-5xl">
-            Vault & Staking
+            Agent Stake Vault
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-on-surface-muted">
-            Commit agent collateral, prepare identity metadata, and inspect vault status from the
-            deployed Crucible contracts.
+            Deposit agent stake, prepare identity metadata, and inspect vault status from deployed
+            Crucible contracts.
           </p>
         </div>
 
         <div className="grid grid-cols-3 overflow-hidden rounded-lg border border-border-strong/15 bg-surface-low shadow-[0_18px_44px_-34px_rgba(255,176,0,0.45)] sm:min-w-[460px]">
-          <HudMetric label="Free Vault" value={formatToken(freeDeposit)} icon={Wallet} />
-          <HudMetric label="Min Native" value={formatToken(nativeMinStake)} icon={ShieldCheck} />
+          <HudMetric label="Available Stake" value={formatToken(freeDeposit)} icon={Wallet} />
+          <HudMetric
+            label="Min Native Stake"
+            value={formatToken(nativeMinStake)}
+            icon={ShieldCheck}
+          />
           <HudMetric label="Agents" value={formatCount(totalAgents)} icon={RadioTower} />
         </div>
       </header>
@@ -172,21 +176,21 @@ export default function StakePage() {
             <div className="relative">
               <div className="mb-7 max-w-3xl">
                 <h2 className="font-display text-3xl font-black text-on-surface">
-                  Collateral Readiness Bay
+                  Agent Stake Setup
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-on-surface-muted">
-                  Vault balance is the free collateral owned by the connected wallet. Assignment
-                  locks happen later through TaskEscrow when an agent is selected for a task.
+                  Vault balance is the unlocked stake owned by the connected wallet. Task
+                  assignments lock part of this stake later through TaskEscrow.
                 </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
                 <Readout
-                  label="Available Deposit"
+                  label="Available Stake"
                   value={formatToken(freeDeposit)}
                   accent="secondary"
                 />
-                <Readout label="Protocol Treasury" value={formatToken(slashedTreasury)} />
+                <Readout label="Slashing Treasury" value={formatToken(slashedTreasury)} />
                 <Readout
                   label="First Task Subsidy"
                   value={subsidyPercent == null ? '-' : `${subsidyPercent.toString()}%`}
@@ -241,7 +245,7 @@ export default function StakePage() {
         <FooterReadout label="Vault Contract" value={shortAddress(vaultAddress)} />
         <FooterReadout label="Registry Contract" value={shortAddress(registryAddress)} />
         <FooterReadout label="Registered Agents" value={formatCount(totalAgents)} accent />
-        <FooterReadout label="Native Base Stake" value={formatToken(nativeMinStake)} />
+        <FooterReadout label="Native Min Stake" value={formatToken(nativeMinStake)} />
       </div>
     </div>
   );
@@ -303,7 +307,7 @@ function IdentityPanel({
       <div className="mb-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
           <FileJson size={15} className="text-primary" />
-          Identity Generation
+          Agent Identity
         </div>
         <span className="rounded border border-secondary/25 bg-secondary/10 px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-secondary">
           Local Config
@@ -311,7 +315,7 @@ function IdentityPanel({
       </div>
 
       <label className="mb-2 block font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
-        Node Label
+        Agent Label
       </label>
       <input
         value={nodeLabel}
@@ -347,8 +351,8 @@ function IdentityPanel({
         <Upload className="mx-auto mb-3 text-primary-muted" size={24} />
         <p className="font-display text-sm font-bold text-on-surface">Agent Identity Draft</p>
         <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-on-surface-muted">
-          This prepares local metadata for an agent identity. INFT mint and registry commit still
-          require the dedicated registration flow.
+          This prepares local metadata for an agent identity. INFT minting and registry commit still
+          happen in the dedicated registration flow.
         </p>
         <p className="mt-4 break-all font-mono text-[10px] uppercase tracking-widest text-primary">
           {identityHash}
@@ -389,11 +393,11 @@ function NodeConfigPanel({
     <section className="rounded-lg border border-border-strong/15 bg-surface-container/70 p-5">
       <div className="mb-5 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
         <Cpu size={15} className="text-primary-muted" />
-        Node Configuration
+        Agent Configuration
       </div>
 
       <p className="mb-2 font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
-        Execution Path
+        Verification Path
       </p>
       <div className="mb-5 grid grid-cols-2 gap-2">
         <ConfigButton
@@ -411,7 +415,7 @@ function NodeConfigPanel({
       <div className="mb-5">
         <div className="mb-2 flex justify-between gap-3">
           <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
-            Compute Intensity
+            Compute Load
           </span>
           <span className="font-mono text-[10px] font-bold text-primary">
             {computeIntensity}/10
@@ -429,7 +433,7 @@ function NodeConfigPanel({
 
       <div className="grid gap-3">
         <AmountInput
-          label="Deposit Collateral"
+          label="Deposit Agent Stake"
           value={stakeAmount}
           onChange={setStakeAmount}
           icon={ArrowDownToLine}
@@ -440,11 +444,11 @@ function NodeConfigPanel({
           disabled={!isConnected || isPending}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded bg-primary px-4 font-display text-sm font-black text-on-primary transition-colors hover:bg-primary-muted disabled:cursor-not-allowed disabled:opacity-45"
         >
-          Deposit to Vault <Coins size={14} />
+          Deposit Stake <Coins size={14} />
         </button>
 
         <AmountInput
-          label="Withdraw Free Deposit"
+          label="Withdraw Available Stake"
           value={withdrawAmount}
           onChange={setWithdrawAmount}
           icon={Wallet}
@@ -547,15 +551,15 @@ function OperatorIdentityCard({
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <p className="font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
-                Operator Link
+                Wallet Link
               </p>
               <h3 className="mt-1 font-display text-2xl font-black text-on-surface">
-                {linked && address ? shortAddress(address) : 'No Operator Linked'}
+                {linked && address ? shortAddress(address) : 'No Wallet Linked'}
               </h3>
               <p className="mt-2 text-xs leading-relaxed text-on-surface-dim">
                 {linked
-                  ? 'Vault telemetry is bound to this wallet.'
-                  : 'Connect wallet to unlock vault telemetry.'}
+                  ? 'Vault data is bound to this wallet.'
+                  : 'Connect wallet to show live vault data.'}
               </p>
             </div>
             <div className="rounded border border-primary/25 bg-primary/10 px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-primary">
@@ -570,7 +574,7 @@ function OperatorIdentityCard({
               {linked ? <LinkedIdentityCore /> : <OperatorDockSlot />}
             </div>
             <div className="absolute bottom-3 left-3 rounded border border-border-strong/15 bg-surface/70 px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-on-surface-dim">
-              {linked ? 'Vault Linked' : 'Awaiting Wallet Link'}
+              {linked ? 'Vault Linked' : 'Wallet Required'}
             </div>
           </div>
 
@@ -679,10 +683,10 @@ function OperatorDockSlot() {
       </svg>
 
       <div className="absolute left-4 top-4 rounded border border-primary/20 bg-surface/70 px-2 py-1 font-mono text-[7px] uppercase tracking-[0.22em] text-primary">
-        Operator Slot
+        Wallet Slot
       </div>
       <div className="absolute bottom-4 right-4 rounded border border-secondary/15 bg-surface/70 px-2 py-1 font-mono text-[7px] uppercase tracking-[0.22em] text-secondary">
-        Link Required
+        Connect Required
       </div>
     </div>
   );
@@ -714,7 +718,7 @@ function LedgerPanel({
       <div className="mb-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
           <Database size={15} className="text-primary-muted" />
-          Ledger Events
+          Vault Events
         </div>
         <span className="font-mono text-[8px] uppercase tracking-widest text-on-surface-dim">
           Local Session
@@ -722,8 +726,8 @@ function LedgerPanel({
       </div>
 
       <div className="space-y-4">
-        <LedgerItem label="Vault Address" value={shortAddress(vaultAddress)} tone="primary" />
-        <LedgerItem label="Treasury Balance" value={formatToken(treasury)} tone="secondary" />
+        <LedgerItem label="Vault Contract" value={shortAddress(vaultAddress)} tone="primary" />
+        <LedgerItem label="Slashing Treasury" value={formatToken(treasury)} tone="secondary" />
         <LedgerItem
           label="First Task Subsidy"
           value={subsidyPercent == null ? '-' : `${subsidyPercent.toString()}%`}
@@ -740,7 +744,7 @@ function LedgerPanel({
           ))
         ) : (
           <div className="rounded border border-dashed border-border-strong/20 px-4 py-6 text-center font-mono text-[10px] uppercase tracking-widest text-on-surface-dim">
-            Awaiting wallet transaction
+            Waiting for wallet transaction
           </div>
         )}
       </div>

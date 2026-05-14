@@ -105,13 +105,13 @@ export default function AgentsPage() {
         <div>
           <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
             <Crosshair size={13} />
-            Dossier // Agent Roster
+            Roster // Agent Registry
           </div>
           <h1 className="font-display text-4xl font-black uppercase tracking-tight text-on-surface md:text-5xl">
             Agent Registry
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-on-surface-muted">
-            Select an operator, inspect its trust cycle, and compare on-chain agent readiness.
+            Select an agent, review its trust history, and compare on-chain readiness.
           </p>
         </div>
 
@@ -160,7 +160,7 @@ export default function AgentsPage() {
         <LoadingRoster />
       ) : isError ? (
         <EmptyState
-          title="Registry Link Failed"
+          title="Registry Sync Failed"
           message="Unable to load agent telemetry from the registry endpoint."
         />
       ) : !selectedAgent ? (
@@ -173,7 +173,7 @@ export default function AgentsPage() {
                 <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-on-surface-dim">
-                      Serial Designation
+                      Agent ID
                     </p>
                     <h2 className="mt-1 font-display text-2xl font-black text-on-surface">
                       {agentCallsign(selectedAgent)}
@@ -196,7 +196,7 @@ export default function AgentsPage() {
             <section className="panel-interactive col-span-12 rounded-lg border border-border-strong/15 bg-surface-low p-5 lg:col-span-5">
               <div className="mb-5 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
                 <Activity size={15} className="text-primary" />
-                Capability Matrix
+                Agent Capabilities
               </div>
               <div className="flex flex-wrap gap-2">
                 {selectedAgent.capabilities && selectedAgent.capabilities.length > 0 ? (
@@ -210,14 +210,14 @@ export default function AgentsPage() {
                   ))
                 ) : (
                   <div className="font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
-                    No registered capabilities
+                    No capabilities registered
                   </div>
                 )}
               </div>
 
               <div className="mt-8 space-y-5 border-t border-border-strong/10 pt-5">
                 <MatrixBar
-                  label="Trust Calibration"
+                  label="Trust Score"
                   value={selectedAgent.score}
                   display={formatPercent(selectedAgent.score)}
                 />
@@ -234,7 +234,7 @@ export default function AgentsPage() {
               <div className="mb-5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
                   <Trophy size={15} className="text-primary" />
-                  Roster Ranking
+                  Agent Ranking
                 </div>
                 <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
                   {filteredAgents.length} Listed
@@ -409,7 +409,7 @@ function AgentPortrait({ agent, className }: { agent: AgentTelemetry; className?
           {shortAddress(agent.id)}
         </p>
         <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.18em] text-on-surface-dim">
-          {isNative ? 'Native INFT Core' : 'External Relay Core'}
+          {isNative ? 'Native INFT Identity' : 'External Agent Identity'}
         </p>
       </div>
       <div className="absolute right-5 top-5 flex h-12 w-12 items-center justify-center rounded bg-primary-muted text-on-primary shadow-[0_16px_28px_-22px_rgba(255,213,151,0.95)]">
@@ -493,12 +493,12 @@ function NeuralTimeline({ agent }: { agent: AgentTelemetry }) {
           <div>
             <div className="mb-2 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
               <Zap size={15} className="text-secondary" />
-              Integrity Scanner
+              Trust History
             </div>
             <p className="max-w-md text-xs leading-relaxed text-on-surface-dim">
               {hasCycle
-                ? 'Mission pulses from stored agent trust history.'
-                : 'No mission pulses yet. Scanner is holding an idle readiness lock.'}
+                ? 'Recent task results from stored trust history.'
+                : 'No completed task history yet. This agent is waiting for its first verified task.'}
             </p>
           </div>
 
@@ -546,7 +546,7 @@ function NeuralTimeline({ agent }: { agent: AgentTelemetry }) {
                     className="group/pulse flex h-full items-end"
                     title={
                       idle
-                        ? 'Awaiting mission pulse'
+                        ? 'Waiting for task result'
                         : success
                           ? 'Verification passed'
                           : 'Verification failed'
@@ -577,7 +577,7 @@ function NeuralTimeline({ agent }: { agent: AgentTelemetry }) {
 
             <div className="mt-4 flex justify-between font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
               <span>T-12</span>
-              <span>{hasCycle ? 'Mission Pulses' : 'Idle Scan'}</span>
+              <span>{hasCycle ? 'Task Results' : 'No History'}</span>
               <span>Current</span>
             </div>
           </div>
@@ -606,7 +606,7 @@ function OperationPanel({ agent }: { agent: AgentTelemetry }) {
       <div className="mb-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
           <History size={15} className="text-primary-muted" />
-          Operation Task Log
+          Task Result Log
         </div>
         <span className="rounded-full bg-surface-high px-3 py-1 font-mono text-[8px] uppercase tracking-widest text-on-surface-dim">
           Recent
@@ -648,7 +648,7 @@ function OperationPanel({ agent }: { agent: AgentTelemetry }) {
           ))
         ) : (
           <div className="rounded border border-dashed border-border-strong/25 bg-surface-container/35 px-4 py-8 text-center font-mono text-[10px] uppercase tracking-widest text-on-surface-dim">
-            Awaiting operation history
+            Waiting for task history
           </div>
         )}
       </div>
@@ -657,7 +657,7 @@ function OperationPanel({ agent }: { agent: AgentTelemetry }) {
         href={`/agents/${encodeURIComponent(agent.id)}`}
         className="mt-5 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded border border-border-strong/25 font-mono text-[10px] uppercase tracking-widest text-on-surface-muted transition-colors hover:border-primary/40 hover:text-primary"
       >
-        Open Full Dossier <ArrowUpRight size={12} />
+        Open Full Agent Record <ArrowUpRight size={12} />
       </Link>
     </section>
   );

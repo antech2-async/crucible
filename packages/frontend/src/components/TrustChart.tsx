@@ -28,11 +28,11 @@ export default function TrustChart({ data }: TrustChartProps) {
     <div className="w-full h-[280px] bg-surface-container border border-border p-5">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted">
-          Bayesian Trajectory Analysis
+          Trust Score History
         </h3>
         <div className="flex gap-4">
           <LegendItem label="Trust Score" color={GOLD} />
-          <LegendItem label="Stake Multiplier" color={GOLD_DIM} dim />
+          <LegendItem label="Required Stake" color={GOLD_DIM} dim />
         </div>
       </div>
 
@@ -101,11 +101,11 @@ function CustomTooltip({ active, payload }: any) {
         </p>
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-6">
-            <span className="text-on-surface-muted uppercase text-[9px]">Trust</span>
+            <span className="text-on-surface-muted uppercase text-[9px]">Trust Score</span>
             <span className="font-bold text-on-surface">{payload[0].value.toFixed(1)}%</span>
           </div>
           <div className="flex items-center justify-between gap-6">
-            <span className="text-on-surface-dim uppercase text-[9px]">Multiplier</span>
+            <span className="text-on-surface-dim uppercase text-[9px]">Stake Multiplier</span>
             <span className="text-on-surface-muted">{payload[1].value.toFixed(2)}x</span>
           </div>
         </div>

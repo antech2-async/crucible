@@ -95,37 +95,37 @@ const TASK_STATUS_META: Record<
     label: 'Open',
     category: 'open',
     tone: 'primary',
-    description: 'Awaiting assignment engine',
+    description: 'Waiting for agent assignment',
   },
   [TaskStatus.ASSIGNED]: {
     label: 'Assigned',
     category: 'open',
     tone: 'secondary',
-    description: 'Agents locked and ready',
+    description: 'Agents locked for this task',
   },
   [TaskStatus.IN_PIPELINE]: {
     label: 'In Pipeline',
     category: 'open',
     tone: 'secondary',
-    description: 'Sequential execution active',
+    description: 'Agents running in sequence',
   },
   [TaskStatus.VERIFYING]: {
     label: 'Verifying',
     category: 'verifying',
     tone: 'warning',
-    description: 'Waiting for judge resolution',
+    description: 'Waiting for verification result',
   },
   [TaskStatus.COMPLETED]: {
     label: 'Completed',
     category: 'completed',
     tone: 'success',
-    description: 'Escrow resolved',
+    description: 'Escrow paid out',
   },
   [TaskStatus.PARTIALLY_COMPLETED]: {
     label: 'Partial',
     category: 'completed',
     tone: 'warning',
-    description: 'Resolved with failed agents',
+    description: 'Paid with failed agents excluded',
   },
   [TaskStatus.DISPUTED]: {
     label: 'Disputed',
@@ -137,7 +137,7 @@ const TASK_STATUS_META: Record<
     label: 'Failed',
     category: 'completed',
     tone: 'danger',
-    description: 'Escrow returned or failed',
+    description: 'Payment returned or failed',
   },
 };
 
@@ -284,14 +284,15 @@ export default function TaskEscrowScreen({
         <div className="max-w-3xl">
           <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
             <Hexagon size={13} />
-            Tasks / TaskEscrow Contract
+            Tasks / Task Escrow
           </div>
           <h1 className="font-display text-4xl font-black uppercase tracking-tight text-on-surface md:text-5xl">
             Task Escrow
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-on-surface-muted">
-            Live task escrow, assignment, verification status, and locked collateral. Contract state
-            comes from TaskEscrow; audit records come from 0G Storage when available.
+            Create task locks, track agent assignment, follow verification, and see which stake is
+            at risk. Contract state comes from TaskEscrow; proof records come from 0G Storage when
+            available.
           </p>
         </div>
       </header>
@@ -319,7 +320,7 @@ export default function TaskEscrowScreen({
                       {taskHeading(selectedTask)}
                     </h2>
                     <p className="mt-2 max-w-xl text-sm leading-relaxed text-on-surface-muted">
-                      Criteria {shortHash(selectedTask.criteriaHash)} from poster{' '}
+                      Task criteria hash {shortHash(selectedTask.criteriaHash)}, posted by{' '}
                       {shortAddress(selectedTask.poster)}.{' '}
                       {getTaskMeta(selectedTask.status).description}.
                     </p>
@@ -332,7 +333,7 @@ export default function TaskEscrowScreen({
                     value={formatTokenAmount(selectedTask.totalPayment)}
                   />
                   <HeroMetric
-                    label="Combined Stakes"
+                    label="Agent Stake"
                     value={formatTokenAmount(sumBigints(selectedTask.agentStakes))}
                     accent="secondary"
                   />
@@ -357,10 +358,10 @@ export default function TaskEscrowScreen({
                   >
                     <Copy size={12} />
                     {copied
-                      ? 'Copied URI'
+                      ? 'Copied Link'
                       : selectedTask.criteriaURI
-                        ? 'Copy Criteria URI'
-                        : 'No Criteria URI'}
+                        ? 'Copy Criteria Link'
+                        : 'No Criteria Link'}
                   </button>
                 </div>
               </div>
@@ -379,10 +380,10 @@ export default function TaskEscrowScreen({
               <div>
                 <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
                   <FileText size={14} className="text-primary" />
-                  Task Registry
+                  Escrow Task List
                 </div>
                 <p className="mt-1 text-xs text-on-surface-dim">
-                  Latest tasks from the TaskEscrow contract.
+                  Latest task locks from the TaskEscrow contract.
                 </p>
               </div>
 
@@ -624,12 +625,11 @@ function TeeProofPanel({ task }: { task: EscrowTask }) {
         <div>
           <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
             <ShieldCheck size={14} className="text-primary" />
-            TEE Proof Trail
+            Verification Proof Trail
           </div>
           <p className="mt-2 max-w-2xl text-xs leading-relaxed text-on-surface-muted">
-            Native agents only count as TEE verified when the TaskEscrow contract records non-empty
-            attestation bytes. External or failed submissions are shown as hash commitments or
-            missing proofs.
+            Native agents count as TEE verified only when TaskEscrow records non-empty attestation
+            bytes. External or failed submissions are shown as hash commitments or missing proofs.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <SourceBadge>Source: TaskEscrow proof mappings</SourceBadge>
@@ -665,7 +665,7 @@ function TeeProofPanel({ task }: { task: EscrowTask }) {
           <div className="rounded border border-dashed border-border p-5 text-center">
             <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
               {task.assignedAgents.length
-                ? 'No proof records returned yet'
+                ? 'No proof records on-chain yet'
                 : 'No assigned agents yet'}
             </p>
           </div>
@@ -675,7 +675,7 @@ function TeeProofPanel({ task }: { task: EscrowTask }) {
       {task.auditReport?.results?.some((result: any) => !result.passed) ? (
         <div className="border-t border-danger/20 bg-danger/5 p-5">
           <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-widest text-danger">
-            Slashing audit reasons
+            Slashing reasons
           </p>
           <div className="space-y-2">
             {task.auditReport.results
@@ -719,7 +719,7 @@ function ProofRow({ proof }: { proof: TaskProof }) {
           </span>
         </div>
         <div className="space-y-2 font-mono text-[10px] uppercase tracking-widest text-on-surface-dim">
-          <p>Agent Class: {proof.agentClass}</p>
+          <p>Agent Type: {proof.agentClass}</p>
           <p>Submitted: {proof.submitted ? 'Yes' : 'No'}</p>
           <p>
             Audit:{' '}
@@ -739,10 +739,10 @@ function ProofRow({ proof }: { proof: TaskProof }) {
 
       <div className="min-w-0 space-y-3">
         <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-on-surface-dim">
-          Verification Trail
+          Proof Trail
         </p>
         <ProofField
-          label="On-chain Output Hash / 0G Storage Commitment"
+          label="Output Hash / 0G Storage Commit"
           value={proof.outputHash || 'No output hash recorded'}
         />
         {proof.verificationMode === 'tee-attestation' ? (
@@ -750,7 +750,7 @@ function ProofRow({ proof }: { proof: TaskProof }) {
         ) : (
           <div className="rounded border border-border-strong/10 bg-surface/45 p-3">
             <p className="font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
-              TEE Attestation Record
+              TEE Proof Record
             </p>
             <p className="mt-2 text-xs leading-relaxed text-on-surface-muted">
               {modeMeta.description}
@@ -822,8 +822,8 @@ function EscrowHealthPanel({ task }: { task: EscrowTask | null }) {
 
       <p className="mt-5 text-center text-xs leading-relaxed text-on-surface-muted">
         {task?.assignedAgents.length
-          ? 'Stake coverage is derived from assigned agent collateral against the escrow bounty.'
-          : 'Risk profile appears after the assignment engine locks agent collateral.'}
+          ? 'Stake coverage is derived from assigned agent collateral against the task payout.'
+          : 'Coverage appears after the assignment engine locks agent stake.'}
       </p>
     </section>
   );
@@ -845,9 +845,9 @@ function ProtocolPanel({
       <div className="mb-5 flex items-center justify-between">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
-            TaskEscrow Settings
+            Escrow Contract Settings
           </p>
-          <p className="mt-1 text-xs text-on-surface-dim">Contract parameters</p>
+          <p className="mt-1 text-xs text-on-surface-dim">TaskEscrow parameters</p>
         </div>
         <ShieldAlert size={20} className="text-primary/45" />
       </div>
@@ -893,7 +893,7 @@ function AgentPoolPanel({ task, onCreate }: { task: EscrowTask | null; onCreate:
             Assigned Agents
           </p>
           <p className="mt-1 text-xs text-on-surface-dim">
-            {task ? `${task.assignedAgents.length} assigned nodes` : 'No task selected'}
+            {task ? `${task.assignedAgents.length} agents locked` : 'No task selected'}
           </p>
         </div>
         <a
@@ -930,7 +930,7 @@ function AgentPoolPanel({ task, onCreate }: { task: EscrowTask | null; onCreate:
       ) : (
         <div className="rounded border border-dashed border-border p-5 text-center">
           <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
-            Waiting for assignment
+            Waiting for agent assignment
           </p>
         </div>
       )}
@@ -1007,7 +1007,7 @@ function TaskRegistry({
         <div>
           <XCircle size={20} className="mx-auto mb-4 text-danger" />
           <p className="font-mono text-[10px] uppercase tracking-widest text-danger">
-            Unable to sync escrow contract
+            Unable to sync TaskEscrow
           </p>
         </div>
       </div>
@@ -1020,7 +1020,7 @@ function TaskRegistry({
         <div>
           <Layers3 size={20} className="mx-auto mb-4 text-on-surface-dim" />
           <p className="font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
-            No tasks in this lane
+            No tasks in this status
           </p>
         </div>
       </div>

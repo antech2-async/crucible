@@ -57,7 +57,7 @@ export default function AgentDossier() {
         href="/agents"
         className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-on-surface-muted hover:text-primary transition-colors mb-8"
       >
-        <ArrowLeft size={12} /> Back to Registry
+        <ArrowLeft size={12} /> Back to Agent Registry
       </Link>
 
       <div className="flex flex-col md:flex-row gap-6 items-start mb-10">
@@ -81,7 +81,7 @@ export default function AgentDossier() {
           <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted mb-5">
             {agent.class === 'native'
               ? 'ERC-7857 Intelligent NFT Identity · Verified via 0G TEE'
-              : 'External Agent · Hash Committed'}
+              : 'External Agent · Hash Commitment'}
           </p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -101,7 +101,7 @@ export default function AgentDossier() {
         <Surface level="container" className="p-6 flex flex-col justify-center">
           <Award className="text-primary mb-4" size={24} />
           <h3 className="text-sm font-display font-bold uppercase tracking-widest text-on-surface mb-2">
-            Reputation Profile
+            Trust Profile
           </h3>
           <p className="text-xs font-mono text-on-surface-muted leading-relaxed mb-5">
             Capabilities:{' '}
@@ -110,11 +110,11 @@ export default function AgentDossier() {
             </strong>
             <br />
             <br />
-            Bayesian trust score of{' '}
+            Trust score of{' '}
             <strong className={cn('text-on-surface', tierColor)}>
               {(agent.score * 100).toFixed(1)}%
             </strong>{' '}
-            based on {agent.tasks} completed tasks and {agent.slashes} slash events.
+            based on {agent.tasks} completed tasks and {agent.slashes} slashing events.
           </p>
           <a
             href={`https://chainscan-galileo.0g.ai/address/${agentId}`}
@@ -127,7 +127,7 @@ export default function AgentDossier() {
         </Surface>
       </div>
 
-      <SectionHeader title="Behavioral Log" />
+      <SectionHeader title="Task History" />
       <div className="space-y-2">
         {agent.taskHistory?.length > 0 ? (
           agent.taskHistory

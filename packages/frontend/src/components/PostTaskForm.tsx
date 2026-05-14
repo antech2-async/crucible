@@ -137,13 +137,13 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
         <div>
           <div className="mb-2 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
             <PlusCircle size={14} />
-            New Escrow Task
+            New Task Escrow
           </div>
           <h2 className="font-display text-2xl font-black tracking-tight text-on-surface">
             Post New Task
           </h2>
           <p className="mt-1 text-xs text-on-surface-dim">
-            Criteria are committed to 0G Storage before the TaskEscrow transaction.
+            Task criteria are saved to 0G Storage before the TaskEscrow transaction.
           </p>
         </div>
         <ShieldCheck size={20} className="mt-1 text-primary/45" />
@@ -167,7 +167,7 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
-              Budget
+              Task Budget
             </label>
             <div className="relative">
               <input
@@ -214,7 +214,7 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
 
         <div>
           <label className="mb-2 block font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
-            Execution Mode
+            Agent Run Mode
           </label>
           <div className="grid grid-cols-2 overflow-hidden rounded border border-border bg-surface p-px">
             <ModeButton
@@ -252,7 +252,7 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
             onChange={(value) => setFormData({ ...formData, minWords: value })}
           />
           <SliderField
-            label="Source Check"
+            label="Required Sources"
             value={formData.minSources}
             suffix="Links"
             min="1"
@@ -264,7 +264,7 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
 
         <div className="min-w-0 rounded border border-border bg-surface px-3 py-2.5">
           <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
-            Criteria Hash
+            Task Criteria Hash
           </p>
           <p className="truncate font-mono text-[10px] text-primary">{criteriaHash}</p>
         </div>
