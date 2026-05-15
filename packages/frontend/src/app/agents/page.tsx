@@ -16,7 +16,7 @@ import {
   Trophy,
   Zap,
 } from 'lucide-react';
-import { TierChip } from '@/components/ui';
+import { Button, SyncIndicator, TierChip } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useAgentsQuery } from '@/features/agents/queries';
 import type { AgentTelemetry } from '@/features/agents/types';
@@ -35,7 +35,7 @@ export default function AgentsPage() {
   const [filter, setFilter] = useState<AgentFilter>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
-  const { data: agents = [], isLoading, isError } = useAgentsQuery();
+  const { data: agents = [], isLoading, isFetching, isError, refetch } = useAgentsQuery();
 
   const filteredAgents = useMemo(
     () =>
@@ -80,6 +80,7 @@ export default function AgentsPage() {
           <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
             <Crosshair size={13} />
             Roster // Agent Registry
+            <SyncIndicator active={isFetching && !isLoading} label="Refreshing" />
           </div>
           <h1 className="font-display text-4xl font-black uppercase tracking-tight text-on-surface md:text-5xl">
             Agent Registry
@@ -131,12 +132,21 @@ export default function AgentsPage() {
       </div>
 
       {isLoading ? (
-        <DataState tone="loading" title="Syncing Agent Registry" message="Reading agent telemetry." />
+        <DataState
+          tone="loading"
+          title="Syncing Agent Registry"
+          message="Reading agent telemetry."
+        />
       ) : isError ? (
         <DataState
           tone="error"
           title="Registry Sync Failed"
           message="Unable to load agent telemetry from the registry endpoint."
+          action={
+            <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              Retry Sync
+            </Button>
+          }
         />
       ) : !selectedAgent ? (
         <DataState title="No Agents Online" message="No registered agents are available yet." />

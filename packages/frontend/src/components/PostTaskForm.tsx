@@ -6,7 +6,6 @@ import {
   Clock,
   Coins,
   GitBranch,
-  Loader2,
   PlusCircle,
   RadioTower,
   Send,
@@ -14,7 +13,7 @@ import {
 } from 'lucide-react';
 import { keccak256, parseEther, toHex } from 'viem';
 import { CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucible/shared';
-import { Button } from '@/components/ui';
+import { ActionStatus, Button } from '@/components/ui';
 import { apiJson, getErrorMessage } from '@/lib/api';
 import {
   getContractActionLabel,
@@ -306,21 +305,17 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
           </div>
         ) : null}
 
+        <ActionStatus step={tx.step} hash={tx.hash} error={tx.error} />
+
         <Button
           variant="primary"
           className="w-full justify-center py-3"
           type="submit"
           disabled={tx.isBusy}
+          isLoading={tx.isBusy}
+          loadingText={getContractActionLabel(tx.step)}
         >
-          {tx.isBusy ? (
-            <>
-              {getContractActionLabel(tx.step)} <Loader2 className="animate-spin" size={14} />
-            </>
-          ) : (
-            <>
-              Post Task <Send size={14} />
-            </>
-          )}
+          Post Task <Send size={14} />
         </Button>
       </form>
     </section>

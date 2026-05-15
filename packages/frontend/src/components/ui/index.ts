@@ -7,3 +7,5 @@ export { DataTable } from './DataTable';
 export { LabelStat } from './LabelStat';
 export { AccentBar } from './AccentBar';
 export { SectionHeader } from './SectionHeader';
+export { ActionStatus } from './ActionStatus';
+export { SyncIndicator } from './SyncIndicator';

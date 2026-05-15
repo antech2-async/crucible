@@ -18,6 +18,7 @@ import { formatEther, parseEther } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { AGENT_REGISTRY_ABI, AGENT_STAKE_VAULT_ABI, CONTRACT_ADDRESSES } from '@crucible/shared';
 import { cn } from '@/lib/utils';
+import { ActionStatus, Button } from '@/components/ui';
 import {
   getContractActionLabel,
   useContractAction,
@@ -133,10 +134,10 @@ export default function StakePage() {
         value: parseEther(amount),
       });
       setLocalEvents((prev) =>
-        [{ label: 'Deposit submitted', value: shortHash(hash), tone: 'secondary' as const }, ...prev].slice(
-          0,
-          4,
-        ),
+        [
+          { label: 'Deposit submitted', value: shortHash(hash), tone: 'secondary' as const },
+          ...prev,
+        ].slice(0, 4),
       );
     } catch (error) {
       setLocalEvents((prev) =>
@@ -160,10 +161,10 @@ export default function StakePage() {
         args: [parseEther(amount)],
       });
       setLocalEvents((prev) =>
-        [{ label: 'Withdraw submitted', value: shortHash(hash), tone: 'primary' as const }, ...prev].slice(
-          0,
-          4,
-        ),
+        [
+          { label: 'Withdraw submitted', value: shortHash(hash), tone: 'primary' as const },
+          ...prev,
+        ].slice(0, 4),
       );
     } catch (error) {
       setLocalEvents((prev) =>
@@ -251,6 +252,10 @@ export default function StakePage() {
                   isConnected={walletConnected}
                   depositStep={depositTx.step}
                   withdrawStep={withdrawTx.step}
+                  depositHash={depositTx.hash}
+                  withdrawHash={withdrawTx.hash}
+                  depositError={depositTx.error}
+                  withdrawError={withdrawTx.error}
                   isPending={depositTx.isBusy || withdrawTx.isBusy}
                   onDeposit={submitDeposit}
                   onWithdraw={submitWithdraw}
@@ -410,6 +415,10 @@ function NodeConfigPanel({
   isConnected,
   depositStep,
   withdrawStep,
+  depositHash,
+  withdrawHash,
+  depositError,
+  withdrawError,
   isPending,
   onDeposit,
   onWithdraw,
@@ -425,10 +434,18 @@ function NodeConfigPanel({
   isConnected: boolean;
   depositStep: ReturnType<typeof useContractAction>['step'];
   withdrawStep: ReturnType<typeof useContractAction>['step'];
+  depositHash?: `0x${string}`;
+  withdrawHash?: `0x${string}`;
+  depositError?: string | null;
+  withdrawError?: string | null;
   isPending: boolean;
   onDeposit: () => void;
   onWithdraw: () => void;
 }) {
+  const activeStep = depositStep !== 'idle' ? depositStep : withdrawStep;
+  const activeHash = depositStep !== 'idle' ? depositHash : withdrawHash;
+  const activeError = depositStep !== 'idle' ? depositError : withdrawError;
+
   return (
     <section className="rounded-lg border border-border-strong/15 bg-surface-container/70 p-5">
       <div className="mb-5 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
@@ -478,15 +495,21 @@ function NodeConfigPanel({
           onChange={setStakeAmount}
           icon={ArrowDownToLine}
         />
-        <button
+        <Button
           type="button"
           onClick={onDeposit}
           disabled={!isConnected || isPending}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded bg-primary px-4 font-display text-sm font-black text-on-primary transition-colors hover:bg-primary-muted disabled:cursor-not-allowed disabled:opacity-45"
+          isLoading={
+            depositStep === 'preparing' ||
+            depositStep === 'wallet-confirm' ||
+            depositStep === 'pending-chain'
+          }
+          loadingText={getContractActionLabel(depositStep)}
+          className="min-h-11 rounded px-4 text-sm normal-case tracking-normal"
         >
-          {depositStep === 'idle' ? 'Deposit Stake' : getContractActionLabel(depositStep)}
+          Deposit Stake
           <Coins size={14} />
-        </button>
+        </Button>
 
         <AmountInput
           label="Withdraw Available Stake"
@@ -494,15 +517,28 @@ function NodeConfigPanel({
           onChange={setWithdrawAmount}
           icon={Wallet}
         />
-        <button
+        <Button
+          variant="outline"
           type="button"
           onClick={onWithdraw}
           disabled={!isConnected || isPending}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded border border-primary/35 px-4 font-display text-sm font-black text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-45"
+          isLoading={
+            withdrawStep === 'preparing' ||
+            withdrawStep === 'wallet-confirm' ||
+            withdrawStep === 'pending-chain'
+          }
+          loadingText={getContractActionLabel(withdrawStep)}
+          className="min-h-11 rounded px-4 text-sm normal-case tracking-normal"
         >
-          {withdrawStep === 'idle' ? 'Withdraw Available' : getContractActionLabel(withdrawStep)}
+          Withdraw Available
           <Wallet size={14} />
-        </button>
+        </Button>
+        {!isConnected ? (
+          <p className="font-mono text-[9px] uppercase tracking-widest text-on-surface-dim">
+            Connect wallet to run vault transactions.
+          </p>
+        ) : null}
+        <ActionStatus step={activeStep} hash={activeHash} error={activeError} className="mt-1" />
       </div>
     </section>
   );

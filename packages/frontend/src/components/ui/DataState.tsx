@@ -1,3 +1,4 @@
+import type React from 'react';
 import { AlertTriangle, Database, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -5,10 +6,11 @@ type DataStateProps = {
   title: string;
   message?: string;
   tone?: 'loading' | 'empty' | 'error';
+  action?: React.ReactNode;
   className?: string;
 };
 
-export function DataState({ title, message, tone = 'empty', className }: DataStateProps) {
+export function DataState({ title, message, tone = 'empty', action, className }: DataStateProps) {
   const Icon = tone === 'loading' ? Loader2 : tone === 'error' ? AlertTriangle : Database;
 
   return (
@@ -33,6 +35,7 @@ export function DataState({ title, message, tone = 'empty', className }: DataSta
           {message}
         </p>
       ) : null}
+      {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
     </div>
   );
 }

@@ -21,17 +21,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { agentKeys, useAgentsQuery } from '@/features/agents/queries';
 import { taskKeys, useTaskEscrowQuery } from '@/features/tasks/queries';
 import type { AgentTelemetry } from '@/features/agents/types';
+import { SyncIndicator } from '@/components/ui';
 import dynamic from 'next/dynamic';
 
-const MeshVisualizer = dynamic(
-  () => import('./MeshVisualizer').then((mod) => mod.MeshVisualizer),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="relative h-full w-full overflow-hidden bg-[linear-gradient(rgba(113,215,205,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,213,151,0.035)_1px,transparent_1px)] bg-[size:34px_34px]" />
-    ),
-  },
-);
+const MeshVisualizer = dynamic(() => import('./MeshVisualizer').then((mod) => mod.MeshVisualizer), {
+  ssr: false,
+  loading: () => (
+    <div className="relative h-full w-full overflow-hidden bg-[linear-gradient(rgba(113,215,205,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,213,151,0.035)_1px,transparent_1px)] bg-[size:34px_34px]" />
+  ),
+});
 
 const FALLBACK_EVENTS = [
   {
@@ -46,8 +44,8 @@ export default function Arena() {
   const [events, setEvents] = useState<any[]>([]);
   const [networkShock, setNetworkShock] = useState(false);
   const queryClient = useQueryClient();
-  const { data: agents = [] } = useAgentsQuery();
-  const { data: taskSnapshot } = useTaskEscrowQuery();
+  const { data: agents = [], isFetching: isAgentsFetching } = useAgentsQuery();
+  const { data: taskSnapshot, isFetching: isTasksFetching } = useTaskEscrowQuery();
   const latestTasks = taskSnapshot?.tasks ?? [];
 
   const { data: agentList } = useReadContract({
@@ -175,6 +173,11 @@ export default function Arena() {
           title="Agent Trust Mesh"
           actions={
             <div className="flex min-w-0 flex-wrap justify-end gap-2">
+              <SyncIndicator
+                active={isAgentsFetching || isTasksFetching}
+                label="Syncing"
+                className="hidden sm:inline-flex"
+              />
               <StatusPill tone="secondary">Top Agents: {topMeshAgents.length}/5</StatusPill>
               <StatusPill tone="primary">Registered: {activeNodes}</StatusPill>
             </div>

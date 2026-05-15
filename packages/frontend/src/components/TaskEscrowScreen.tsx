@@ -20,6 +20,7 @@ import {
 import { formatEther } from 'viem';
 import { TaskStatus } from '@crucible/shared';
 import PostTaskForm from '@/components/PostTaskForm';
+import { SyncIndicator } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useTaskEscrowQuery } from '@/features/tasks/queries';
 import { normalizeTasks } from '@/features/tasks/utils';
@@ -110,12 +111,9 @@ export default function TaskEscrowScreen({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data, error, isLoading, refetch } = useTaskEscrowQuery(initialData);
+  const { data, error, isLoading, isFetching, refetch } = useTaskEscrowQuery(initialData);
 
-  const tasks = useMemo<EscrowTask[]>(
-    () => normalizeTasks(data?.tasks),
-    [data?.tasks],
-  );
+  const tasks = useMemo<EscrowTask[]>(() => normalizeTasks(data?.tasks), [data?.tasks]);
 
   useEffect(() => {
     setActiveFilter(initialFilter);
@@ -308,6 +306,7 @@ export default function TaskEscrowScreen({
                 <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface">
                   <FileText size={14} className="text-primary" />
                   Escrow Task List
+                  <SyncIndicator active={isFetching && !isLoading} label="Refreshing" />
                 </div>
                 <p className="mt-1 text-xs text-on-surface-dim">
                   Latest task locks from the TaskEscrow contract.
