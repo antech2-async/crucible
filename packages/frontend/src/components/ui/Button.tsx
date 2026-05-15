@@ -1,9 +1,12 @@
 import React from 'react';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
+  isLoading?: boolean;
+  loadingText?: string;
 }
 
 const variantClass = {
@@ -28,19 +31,33 @@ export function Button({
   size = 'md',
   className,
   children,
+  disabled,
+  isLoading = false,
+  loadingText,
   ...props
 }: ButtonProps) {
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 overflow-hidden transition-[background-color,border-color,color,opacity,transform,box-shadow] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40',
         variantClass[variant],
         sizeClass[size],
+        isLoading && 'cursor-wait',
         className,
       )}
+      aria-busy={isLoading || undefined}
+      data-loading={isLoading || undefined}
+      disabled={disabled || isLoading}
       {...props}
     >
-      {children}
+      {isLoading ? (
+        <>
+          <Loader2 size={14} className="animate-spin" />
+          {loadingText ?? children}
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }

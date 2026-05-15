@@ -103,8 +103,8 @@ export default function AgentCard({ agent }: AgentCardProps) {
               : agent.status === 'working'
                 ? 'Processing'
                 : agent.class === 'native'
-                  ? 'TEE Verified'
-                  : 'Hash Committed'}
+                  ? 'TEE Proof'
+                  : 'Hash Proof'}
           </span>
         </div>
       </div>

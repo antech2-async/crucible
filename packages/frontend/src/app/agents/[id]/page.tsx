@@ -2,12 +2,19 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { Shield, ExternalLink, Award, AlertOctagon, Cpu, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import TrustChart from '@/components/TrustChart';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { Surface, TierChip, LabelStat, SectionHeader } from '@/components/ui';
+import { useAgentQuery } from '@/features/agents/queries';
+
+const TrustChart = dynamic(() => import('@/components/TrustChart'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[320px] animate-pulse rounded border border-border bg-surface-container" />
+  ),
+});
 
 const TIER_LABELS = ['Basic', 'Uncommon', 'Rare', 'Epic', 'Mythic'];
 const TIER_COLORS = [
@@ -22,14 +29,7 @@ export default function AgentDossier() {
   const params = useParams();
   const agentId = params.id as string;
 
-  const { data: agent, isLoading } = useQuery({
-    queryKey: ['agent', agentId],
-    queryFn: async () => {
-      const res = await fetch(`/api/agents/${agentId}`);
-      if (!res.ok) throw new Error('Agent not found');
-      return res.json();
-    },
-  });
+  const { data: agent, isLoading } = useAgentQuery(agentId);
 
   if (isLoading) {
     return (
@@ -50,6 +50,7 @@ export default function AgentDossier() {
         year: 'numeric',
       })
     : 'Apr 2026';
+  const taskHistory = agent.taskHistory ?? [];
 
   return (
     <div className="w-full max-w-6xl mx-auto pb-24">
@@ -57,7 +58,7 @@ export default function AgentDossier() {
         href="/agents"
         className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-on-surface-muted hover:text-primary transition-colors mb-8"
       >
-        <ArrowLeft size={12} /> Back to Registry
+        <ArrowLeft size={12} /> Back to Agent Registry
       </Link>
 
       <div className="flex flex-col md:flex-row gap-6 items-start mb-10">
@@ -81,7 +82,7 @@ export default function AgentDossier() {
           <p className="text-[10px] font-mono uppercase tracking-widest text-on-surface-muted mb-5">
             {agent.class === 'native'
               ? 'ERC-7857 Intelligent NFT Identity · Verified via 0G TEE'
-              : 'External Agent · Hash Committed'}
+              : 'External Agent · Hash Commitment'}
           </p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -101,7 +102,7 @@ export default function AgentDossier() {
         <Surface level="container" className="p-6 flex flex-col justify-center">
           <Award className="text-primary mb-4" size={24} />
           <h3 className="text-sm font-display font-bold uppercase tracking-widest text-on-surface mb-2">
-            Reputation Profile
+            Trust Profile
           </h3>
           <p className="text-xs font-mono text-on-surface-muted leading-relaxed mb-5">
             Capabilities:{' '}
@@ -110,11 +111,11 @@ export default function AgentDossier() {
             </strong>
             <br />
             <br />
-            Bayesian trust score of{' '}
+            Trust score of{' '}
             <strong className={cn('text-on-surface', tierColor)}>
               {(agent.score * 100).toFixed(1)}%
             </strong>{' '}
-            based on {agent.tasks} completed tasks and {agent.slashes} slash events.
+            based on {agent.tasks} completed tasks and {agent.slashes} slashing events.
           </p>
           <a
             href={`https://chainscan-galileo.0g.ai/address/${agentId}`}
@@ -127,10 +128,10 @@ export default function AgentDossier() {
         </Surface>
       </div>
 
-      <SectionHeader title="Behavioral Log" />
+      <SectionHeader title="Task History" />
       <div className="space-y-2">
-        {agent.taskHistory?.length > 0 ? (
-          agent.taskHistory
+        {taskHistory.length > 0 ? (
+          taskHistory
             .slice()
             .reverse()
             .map((task: any, i: number) => (

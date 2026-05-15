@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Activity,
   ChevronRight,
@@ -16,19 +16,20 @@ import { useReadContract, useWatchContractEvent } from 'wagmi';
 import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucible/shared';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { MeshVisualizer } from './MeshVisualizer';
 import TaskCard from './TaskCard';
+import { useQueryClient } from '@tanstack/react-query';
+import { agentKeys, useAgentsQuery } from '@/features/agents/queries';
+import { taskKeys, useTaskEscrowQuery } from '@/features/tasks/queries';
+import type { AgentTelemetry } from '@/features/agents/types';
+import { SyncIndicator } from '@/components/ui';
+import dynamic from 'next/dynamic';
 
-type DashboardAgent = {
-  id: string;
-  address?: string;
-  tier: number;
-  score: number;
-  status: 'idle' | 'working' | 'slashed' | 'offline';
-  tasks?: number;
-  class?: string;
-  minStake?: string;
-};
+const MeshVisualizer = dynamic(() => import('./MeshVisualizer').then((mod) => mod.MeshVisualizer), {
+  ssr: false,
+  loading: () => (
+    <div className="relative h-full w-full overflow-hidden bg-[linear-gradient(rgba(113,215,205,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,213,151,0.035)_1px,transparent_1px)] bg-[size:34px_34px]" />
+  ),
+});
 
 const FALLBACK_EVENTS = [
   {
@@ -40,10 +41,12 @@ const FALLBACK_EVENTS = [
 ];
 
 export default function Arena() {
-  const [agents, setAgents] = useState<DashboardAgent[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [networkShock, setNetworkShock] = useState(false);
-  const [latestTasks, setLatestTasks] = useState<any[]>([]);
+  const queryClient = useQueryClient();
+  const { data: agents = [], isFetching: isAgentsFetching } = useAgentsQuery();
+  const { data: taskSnapshot, isFetching: isTasksFetching } = useTaskEscrowQuery();
+  const latestTasks = taskSnapshot?.tasks ?? [];
 
   const { data: agentList } = useReadContract({
     address: CONTRACT_ADDRESSES.AGENT_REGISTRY as `0x${string}`,
@@ -65,6 +68,8 @@ export default function Arena() {
     onLogs(logs: any) {
       const log = logs[0];
       const isSlash = log.eventName === 'AgentSlashed';
+      void queryClient.invalidateQueries({ queryKey: taskKeys.escrowSnapshot() });
+      if (isSlash) void queryClient.invalidateQueries({ queryKey: agentKeys.list() });
       const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
       setEvents((prev) =>
         [
@@ -92,6 +97,7 @@ export default function Arena() {
     onLogs(logs: any) {
       const log = logs[0];
       if (log.eventName === 'TrustTierUpdated') {
+        void queryClient.invalidateQueries({ queryKey: agentKeys.list() });
         const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
         setEvents((prev) =>
           [
@@ -108,38 +114,6 @@ export default function Arena() {
     },
   });
 
-  useEffect(() => {
-    async function fetchAgents() {
-      try {
-        const res = await fetch('/api/agents');
-        if (!res.ok) throw new Error('fetch failed');
-        const payload = await res.json();
-        setAgents(Array.isArray(payload) ? payload : []);
-      } catch (err) {
-        console.error('Failed to sync agent telemetry', err);
-      }
-    }
-
-    async function fetchTasks() {
-      try {
-        const res = await fetch('/api/tasks');
-        if (!res.ok) throw new Error('fetch tasks failed');
-        const payload = await res.json();
-        setLatestTasks(payload.tasks || []);
-      } catch (err) {
-        console.error('Failed to sync tasks', err);
-      }
-    }
-
-    fetchAgents();
-    fetchTasks();
-    const id = setInterval(() => {
-      fetchAgents();
-      fetchTasks();
-    }, 10000);
-    return () => clearInterval(id);
-  }, []);
-
   const liveEvents = events.length ? events : FALLBACK_EVENTS;
 
   const avgTrust = useMemo(() => {
@@ -148,7 +122,7 @@ export default function Arena() {
   }, [agents]);
 
   const activeNodesNum = totalAgents > 0 ? totalAgents : agents.length;
-  const taskCountValue = taskCount ? Number(taskCount) : 0;
+  const taskCountValue = taskSnapshot?.taskCount ?? (taskCount ? Number(taskCount) : 0);
 
   const systemLoad = useMemo(() => {
     if (activeNodesNum === 0) return { val: 0, str: '0.0%' };
@@ -199,17 +173,22 @@ export default function Arena() {
           title="Agent Trust Mesh"
           actions={
             <div className="flex min-w-0 flex-wrap justify-end gap-2">
+              <SyncIndicator
+                active={isAgentsFetching || isTasksFetching}
+                label="Syncing"
+                className="hidden sm:inline-flex"
+              />
               <StatusPill tone="secondary">Top Agents: {topMeshAgents.length}/5</StatusPill>
               <StatusPill tone="primary">Registered: {activeNodes}</StatusPill>
             </div>
           }
         />
 
-        <div className="relative h-[260px] overflow-hidden md:h-[280px] lg:h-[260px]">
+        <div className="relative min-h-[260px] flex-1 overflow-hidden">
           <div className="readout-pulse absolute left-6 top-6 z-20 space-y-1 font-mono text-[9px] uppercase tracking-[0.08em] text-on-surface-muted/35 transition-colors duration-300 group-hover/mesh:text-secondary/70">
-            <div>AGENT_STREAM: {topMeshAgents.length ? 'SYNCED' : 'AWAITING'}</div>
-            <div>SORT: TRUST_SCORE_DESC</div>
-            <div>SOURCE: /API/AGENTS + AGENTREGISTRY</div>
+            <div>TOP_AGENT_FEED: {topMeshAgents.length ? 'SYNCED' : 'AWAITING'}</div>
+            <div>RANK: TRUST_SCORE</div>
+            <div>SOURCE: AGENTS API + REGISTRY</div>
             <div className="mt-3 flex gap-1.5 opacity-0 transition-opacity duration-300 group-hover/mesh:opacity-100">
               {[0, 1, 2, 3].map((index) => (
                 <span
@@ -225,18 +204,18 @@ export default function Arena() {
 
         <div className="grid grid-cols-3 gap-4 border-t border-border-strong/10 bg-surface/55 p-5">
           <StatFooter
-            label="Agent Sync"
+            label="Agent Feed"
             value={topMeshAgents.length ? 'Live' : 'Awaiting'}
             tone="secondary"
           />
           <StatFooter label="Posted Tasks" value={networkLoad} />
-          <StatFooter label="Average Trust" value={meshIntegrity} tone="primary" />
+          <StatFooter label="Avg Trust" value={meshIntegrity} tone="primary" />
         </div>
       </section>
 
       <section className="col-span-12 grid self-start gap-5 md:grid-cols-3 lg:col-span-4 lg:grid-cols-1">
         <MetricCard
-          label="Avg Trust Score"
+          label="Average Trust"
           value={systemLoad.str}
           icon={<Gauge size={22} className="text-on-surface-muted/35" />}
           barValue={systemLoad.val}
@@ -253,7 +232,7 @@ export default function Arena() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div className="min-w-0 space-y-1">
               <h3 className="font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface-muted/55">
-                Trust Health
+                Network Trust
               </h3>
               <div
                 className={cn(
@@ -267,7 +246,7 @@ export default function Arena() {
             <ShieldCheck size={21} className="shrink-0 text-primary-muted/40" />
           </div>
           <p className="text-xs italic leading-relaxed text-on-surface-muted/40">
-            Derived from AgentRegistry history, recent honest completions, and slash events.
+            Based on AgentRegistry history, completed tasks, and slashing events.
           </p>
         </div>
 
@@ -275,7 +254,7 @@ export default function Arena() {
         {taskCountValue > 0 ? (
           <div className="mt-2">
             <h3 className="mb-3 font-display text-[11px] font-bold uppercase tracking-widest text-on-surface-muted/70">
-              Latest TaskEscrow Task
+              Latest Escrow Task
             </h3>
             <TaskCard
               taskId={taskCountValue - 1}
@@ -289,7 +268,7 @@ export default function Arena() {
         <PanelHeader
           compact
           icon={<FileText size={14} className="text-on-surface-muted/70" />}
-          title="Contract Events"
+          title="Protocol Events"
           actions={
             <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-secondary">
               <span className="h-1.5 w-1.5 rounded-full bg-secondary animate-pulse" />
@@ -307,13 +286,13 @@ export default function Arena() {
       <section className="panel-interactive col-span-12 min-h-[260px] overflow-hidden rounded-xl border border-border-strong/10 bg-surface-low p-6 shadow-[0_18px_34px_-28px_rgba(255,213,151,0.22)] hover:border-secondary/20 lg:col-span-8">
         <div className="mb-7 flex items-center justify-between gap-4">
           <h3 className="font-display text-sm font-black uppercase tracking-widest text-on-surface">
-            Top Trusted Agents
+            Top Reliability Agents
           </h3>
           <Link
             href="/agents"
             className="flex shrink-0 items-center gap-1 rounded border border-primary/20 px-3 py-1 font-mono text-[9px] uppercase tracking-widest text-primary transition-colors hover:bg-primary/5"
           >
-            View Agent Registry <ChevronRight size={11} />
+            Open Agent Registry <ChevronRight size={11} />
           </Link>
         </div>
         <div className="space-y-6">
@@ -321,7 +300,7 @@ export default function Arena() {
             topAgents.map((agent) => <CriticalAgentRow key={agent.id} agent={agent} />)
           ) : (
             <div className="rounded-lg border border-dashed border-border-strong/20 px-4 py-8 text-center font-mono text-[10px] uppercase tracking-widest text-on-surface-muted/45">
-              No registered agents synced
+              No registered agents loaded
             </div>
           )}
         </div>
@@ -505,7 +484,7 @@ function LiveEventRow({ event, index }: { event: any; index: number }) {
   );
 }
 
-function CriticalAgentRow({ agent }: { agent: DashboardAgent }) {
+function CriticalAgentRow({ agent }: { agent: AgentTelemetry }) {
   const score = Math.round(agent.score * 1000) / 10;
   const isStable = score >= 90;
   const tone = isStable ? 'secondary' : 'primary';

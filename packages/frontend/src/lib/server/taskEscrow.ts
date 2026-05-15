@@ -2,7 +2,7 @@ import { ethers, type BytesLike } from 'ethers';
 import { CONTRACT_ADDRESSES, TASK_ESCROW_ABI, AGENT_REGISTRY_ABI } from '@crucible/shared';
 import { StorageService } from '../../../../shared/src/StorageService';
 import { setupEthersWorkaround } from '../../../../shared/src/node-utils';
-import type { TaskApiResponse, TaskApiTask, TaskProof } from '@/components/TaskEscrowScreen';
+import type { TaskApiResponse, TaskApiTask, TaskProof } from '@/features/tasks/types';
 
 export const EMPTY_TASK_ESCROW_SNAPSHOT: TaskApiResponse = {
   taskCount: 0,

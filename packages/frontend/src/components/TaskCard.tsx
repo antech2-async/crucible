@@ -90,7 +90,7 @@ export default function TaskCard({ taskId, auditReport }: { taskId?: number; aud
       {auditReport && auditReport.results && auditReport.results.some((r: any) => !r.passed) && (
         <div className="bg-danger/10 border border-danger/20 p-3 mb-4 space-y-1.5">
           <p className="text-[9px] font-mono uppercase tracking-widest text-danger font-bold mb-1">
-            Slashing Verdict
+            Slashing Result
           </p>
           {auditReport.results
             .filter((r: any) => !r.passed)
@@ -109,7 +109,7 @@ export default function TaskCard({ taskId, auditReport }: { taskId?: number; aud
         href={proofHref}
         className="w-full py-2.5 bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
       >
-        View Full TEE Proof <ChevronRight size={12} />
+        View Verification Proof <ChevronRight size={12} />
       </Link>
 
       <div className="mt-3 flex items-center justify-center gap-2 pt-3 border-t border-border">
@@ -123,7 +123,7 @@ export default function TaskCard({ taskId, auditReport }: { taskId?: number; aud
         </span>
       </div>
       <p className="mt-2 text-center font-mono text-[8px] uppercase tracking-widest text-on-surface-dim">
-        Source: TaskEscrow + 0G Storage audit
+        Source: TaskEscrow + 0G Storage
       </p>
     </Surface>
   );
@@ -156,7 +156,7 @@ function getStatusNote(status: number, failedReasons: string[]) {
       ? `Failed: ${failedReasons[0]}`
       : 'Failed: no passing proof trail recorded';
   }
-  if (status === TaskStatus.VERIFYING) return 'Waiting for audit and slashing judge resolution';
+  if (status === TaskStatus.VERIFYING) return 'Waiting for verification and slashing result';
   return null;
 }
 
