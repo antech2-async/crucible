@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { AgentDossierTelemetry, AgentTelemetry } from './types';
 import { normalizeAgent, normalizeAgents } from './utils';
+import { apiJson } from '@/lib/api';
 
 export const AGENTS_REFETCH_INTERVAL = 10_000;
 
@@ -12,19 +13,13 @@ export const agentKeys = {
   detail: (id: string) => [...agentKeys.all, 'detail', id] as const,
 };
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Request failed: ${url}`);
-  return res.json() as Promise<T>;
-}
-
 export async function fetchAgents(): Promise<AgentTelemetry[]> {
-  const payload = await fetchJson<unknown>('/api/agents');
+  const payload = await apiJson<unknown>('/api/agents');
   return normalizeAgents(payload);
 }
 
 export async function fetchAgent(agentId: string): Promise<AgentDossierTelemetry> {
-  const payload = await fetchJson<Partial<AgentDossierTelemetry>>(`/api/agents/${agentId}`);
+  const payload = await apiJson<Partial<AgentDossierTelemetry>>(`/api/agents/${agentId}`);
   return {
     ...payload,
     ...normalizeAgent(payload),
@@ -56,4 +51,3 @@ export function useAgentQuery(agentId: string) {
     staleTime: 10_000,
   });
 }
-

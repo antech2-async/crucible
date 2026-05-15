@@ -9,7 +9,6 @@ import {
   Bot,
   Cpu,
   Crosshair,
-  Database,
   Gauge,
   History,
   RadioTower,
@@ -22,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { useAgentsQuery } from '@/features/agents/queries';
 import type { AgentTelemetry } from '@/features/agents/types';
 import { rankOfAgent } from '@/features/agents/utils';
+import { DataState } from '@/components/ui/DataState';
 
 type AgentFilter = 'all' | 'elite' | 'active';
 
@@ -131,14 +131,15 @@ export default function AgentsPage() {
       </div>
 
       {isLoading ? (
-        <LoadingRoster />
+        <DataState tone="loading" title="Syncing Agent Registry" message="Reading agent telemetry." />
       ) : isError ? (
-        <EmptyState
+        <DataState
+          tone="error"
           title="Registry Sync Failed"
           message="Unable to load agent telemetry from the registry endpoint."
         />
       ) : !selectedAgent ? (
-        <EmptyState title="No Agents Online" message="No registered agents are available yet." />
+        <DataState title="No Agents Online" message="No registered agents are available yet." />
       ) : (
         <>
           <div className="grid grid-cols-12 items-stretch gap-5">
@@ -741,25 +742,6 @@ function RosterCard({
         </p>
       </div>
     </button>
-  );
-}
-
-function EmptyState({ title, message }: { title: string; message: string }) {
-  return (
-    <div className="rounded-lg border border-dashed border-border-strong/25 bg-surface-low px-6 py-20 text-center">
-      <Database className="mx-auto mb-4 text-on-surface-dim" size={28} />
-      <h2 className="font-display text-xl font-black text-on-surface">{title}</h2>
-      <p className="mx-auto mt-2 max-w-md text-sm text-on-surface-muted">{message}</p>
-    </div>
-  );
-}
-
-function LoadingRoster() {
-  return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      <div className="h-[430px] animate-pulse rounded-lg border border-border-strong/15 bg-surface-low" />
-      <div className="h-[430px] animate-pulse rounded-lg border border-border-strong/15 bg-surface-low" />
-    </div>
   );
 }
 

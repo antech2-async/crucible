@@ -16,12 +16,22 @@ import { useReadContract, useWatchContractEvent } from 'wagmi';
 import { AGENT_REGISTRY_ABI, CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucible/shared';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { MeshVisualizer } from './MeshVisualizer';
 import TaskCard from './TaskCard';
 import { useQueryClient } from '@tanstack/react-query';
 import { agentKeys, useAgentsQuery } from '@/features/agents/queries';
 import { taskKeys, useTaskEscrowQuery } from '@/features/tasks/queries';
 import type { AgentTelemetry } from '@/features/agents/types';
+import dynamic from 'next/dynamic';
+
+const MeshVisualizer = dynamic(
+  () => import('./MeshVisualizer').then((mod) => mod.MeshVisualizer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="relative h-full w-full overflow-hidden bg-[linear-gradient(rgba(113,215,205,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,213,151,0.035)_1px,transparent_1px)] bg-[size:34px_34px]" />
+    ),
+  },
+);
 
 const FALLBACK_EVENTS = [
   {

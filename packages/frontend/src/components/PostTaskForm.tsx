@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   CheckCircle2,
   Clock,
@@ -13,9 +13,13 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { keccak256, parseEther, toHex } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { CONTRACT_ADDRESSES, TASK_ESCROW_ABI } from '@crucible/shared';
 import { Button } from '@/components/ui';
+import { apiJson, getErrorMessage } from '@/lib/api';
+import {
+  getContractActionLabel,
+  useContractAction,
+} from '@/features/transactions/useContractAction';
 
 type PostTaskFormProps = {
   onPosted?: () => void;
@@ -23,9 +27,10 @@ type PostTaskFormProps = {
 
 export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
   const [dismissedHash, setDismissedHash] = useState<string | null>(null);
-  const { writeContractAsync, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash,
+  const [formError, setFormError] = useState<string | null>(null);
+  const [storageWarning, setStorageWarning] = useState<string | null>(null);
+  const tx = useContractAction({
+    onConfirmed: () => onPosted?.(),
   });
 
   const [formData, setFormData] = useState({
@@ -68,44 +73,61 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
 
   const criteriaURI = useMemo(() => `0g://criteria/${criteriaHash.slice(2, 18)}`, [criteriaHash]);
 
-  useEffect(() => {
-    if (isConfirmed) onPosted?.();
-  }, [isConfirmed, onPosted]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    setStorageWarning(null);
 
-    // 1. Upload criteria to 0G Storage via API
-    try {
-      const uploadRes = await fetch('/api/upload-criteria', {
-        method: 'POST',
-        body: JSON.stringify(criteriaPayload),
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!uploadRes.ok) throw new Error('0G Criteria Upload failed');
-      console.log('Criteria successfully committed to 0G Storage');
-    } catch (err) {
-      console.error('Criteria storage failed, but proceeding with chain tx...', err);
+    const budget = normalizeDecimalInput(formData.budget);
+    const deadlineHours = Math.max(1, parseInt(formData.deadlineHours, 10));
+
+    if (!formData.topic.trim()) {
+      setFormError('Add a task topic before posting.');
+      return;
     }
 
-    const deadlineSeconds =
-      Math.floor(Date.now() / 1000) + Math.max(1, parseInt(formData.deadlineHours, 10)) * 3600;
+    if (!Number.isFinite(Number(budget)) || Number(budget) <= 0) {
+      setFormError('Enter a valid task budget.');
+      return;
+    }
 
-    await writeContractAsync({
-      address: CONTRACT_ADDRESSES.TASK_ESCROW as `0x${string}`,
-      abi: TASK_ESCROW_ABI,
-      functionName: 'postTask',
-      args: [
-        BigInt(deadlineSeconds),
-        criteriaHash as `0x${string}`,
-        criteriaURI,
-        formData.isSequential,
-      ],
-      value: parseEther(formData.budget),
-    });
+    const uploadCriteria = async () => {
+      try {
+        await apiJson('/api/upload-criteria', {
+          method: 'POST',
+          body: JSON.stringify(criteriaPayload),
+        });
+      } catch (err) {
+        setStorageWarning(
+          `${getErrorMessage(err, 'Criteria storage failed')}. The on-chain task will still keep the criteria hash.`,
+        );
+      }
+    };
+
+    const deadlineSeconds = Math.floor(Date.now() / 1000) + deadlineHours * 3600;
+
+    try {
+      await tx.execute(
+        {
+          address: CONTRACT_ADDRESSES.TASK_ESCROW as `0x${string}`,
+          abi: TASK_ESCROW_ABI,
+          functionName: 'postTask',
+          args: [
+            BigInt(deadlineSeconds),
+            criteriaHash as `0x${string}`,
+            criteriaURI,
+            formData.isSequential,
+          ],
+          value: parseEther(budget),
+        },
+        uploadCriteria,
+      );
+    } catch (err) {
+      setFormError(getErrorMessage(err, 'Transaction failed'));
+    }
   };
 
-  const showConfirmation = Boolean(isConfirmed && hash && dismissedHash !== hash);
+  const showConfirmation = Boolean(tx.step === 'success' && tx.hash && dismissedHash !== tx.hash);
 
   if (showConfirmation) {
     return (
@@ -117,13 +139,16 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
           Task Posted
         </h3>
         <p className="mt-2 break-all font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
-          Tx {hash?.slice(0, 10)}...{hash?.slice(-8)}
+          Tx {tx.hash?.slice(0, 10)}...{tx.hash?.slice(-8)}
         </p>
         <Button
           variant="ghost"
           size="sm"
           className="mt-6"
-          onClick={() => setDismissedHash(hash ?? null)}
+          onClick={() => {
+            setDismissedHash(tx.hash ?? null);
+            tx.reset();
+          }}
         >
           Create Another
         </Button>
@@ -269,15 +294,27 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
           <p className="truncate font-mono text-[10px] text-primary">{criteriaHash}</p>
         </div>
 
+        {storageWarning ? (
+          <div className="rounded border border-primary/20 bg-primary/5 p-3 font-mono text-[9px] uppercase tracking-widest text-primary-muted">
+            {storageWarning}
+          </div>
+        ) : null}
+
+        {formError || tx.error ? (
+          <div className="rounded border border-danger/25 bg-danger/10 p-3 font-mono text-[9px] uppercase tracking-widest text-danger">
+            {formError || tx.error}
+          </div>
+        ) : null}
+
         <Button
           variant="primary"
           className="w-full justify-center py-3"
           type="submit"
-          disabled={isPending || isConfirming}
+          disabled={tx.isBusy}
         >
-          {isPending || isConfirming ? (
+          {tx.isBusy ? (
             <>
-              Posting Task <Loader2 className="animate-spin" size={14} />
+              {getContractActionLabel(tx.step)} <Loader2 className="animate-spin" size={14} />
             </>
           ) : (
             <>
@@ -288,6 +325,10 @@ export default function PostTaskForm({ onPosted }: PostTaskFormProps) {
       </form>
     </section>
   );
+}
+
+function normalizeDecimalInput(value: string) {
+  return value.trim().replace(',', '.');
 }
 
 function ModeButton({

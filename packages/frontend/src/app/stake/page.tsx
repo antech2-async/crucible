@@ -15,9 +15,14 @@ import {
   Wallet,
 } from 'lucide-react';
 import { formatEther, parseEther } from 'viem';
-import { useAccount, useReadContract, useWriteContract } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 import { AGENT_REGISTRY_ABI, AGENT_STAKE_VAULT_ABI, CONTRACT_ADDRESSES } from '@crucible/shared';
 import { cn } from '@/lib/utils';
+import {
+  getContractActionLabel,
+  useContractAction,
+} from '@/features/transactions/useContractAction';
+import { getErrorMessage } from '@/lib/api';
 
 type TeeProvider = '0g-tee' | 'external';
 type LedgerEvent = { label: string; value: string; tone: 'primary' | 'secondary' | 'danger' };
@@ -26,7 +31,6 @@ const CAPABILITIES = ['research', 'writing', 'coding', 'verification', 'data-syn
 
 export default function StakePage() {
   const { address, isConnected } = useAccount();
-  const { writeContract, isPending } = useWriteContract();
   const [mounted, setMounted] = useState(false);
   const [nodeLabel, setNodeLabel] = useState('');
   const [stakeAmount, setStakeAmount] = useState('0.05');
@@ -40,6 +44,28 @@ export default function StakePage() {
   const registryAddress = CONTRACT_ADDRESSES.AGENT_REGISTRY as `0x${string}`;
   const walletAddress = mounted ? address : undefined;
   const walletConnected = mounted && isConnected;
+  const depositTx = useContractAction({
+    onConfirmed(hash) {
+      setLocalEvents((prev) =>
+        [
+          { label: 'Deposit confirmed', value: shortHash(hash), tone: 'secondary' as const },
+          ...prev,
+        ].slice(0, 4),
+      );
+      void refetchDeposit();
+    },
+  });
+  const withdrawTx = useContractAction({
+    onConfirmed(hash) {
+      setLocalEvents((prev) =>
+        [
+          { label: 'Withdraw confirmed', value: shortHash(hash), tone: 'primary' as const },
+          ...prev,
+        ].slice(0, 4),
+      );
+      void refetchDeposit();
+    },
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -95,50 +121,58 @@ export default function StakePage() {
     );
   };
 
-  const submitDeposit = () => {
-    if (!stakeAmount || Number(stakeAmount) <= 0) return;
-    writeContract(
-      {
+  const submitDeposit = async () => {
+    const amount = normalizeDecimalInput(stakeAmount);
+    if (!amount || Number(amount) <= 0 || depositTx.isBusy || withdrawTx.isBusy) return;
+
+    try {
+      const hash = await depositTx.execute({
         address: vaultAddress,
         abi: AGENT_STAKE_VAULT_ABI,
         functionName: 'deposit',
-        value: parseEther(stakeAmount),
-      },
-      {
-        onSuccess(hash) {
-          setLocalEvents((prev) =>
-            [
-              { label: 'Deposit submitted', value: shortHash(hash), tone: 'secondary' as const },
-              ...prev,
-            ].slice(0, 4),
-          );
-          void refetchDeposit();
-        },
-      },
-    );
+        value: parseEther(amount),
+      });
+      setLocalEvents((prev) =>
+        [{ label: 'Deposit submitted', value: shortHash(hash), tone: 'secondary' as const }, ...prev].slice(
+          0,
+          4,
+        ),
+      );
+    } catch (error) {
+      setLocalEvents((prev) =>
+        [
+          { label: 'Deposit failed', value: getErrorMessage(error), tone: 'danger' as const },
+          ...prev,
+        ].slice(0, 4),
+      );
+    }
   };
 
-  const submitWithdraw = () => {
-    if (!withdrawAmount || Number(withdrawAmount) <= 0) return;
-    writeContract(
-      {
+  const submitWithdraw = async () => {
+    const amount = normalizeDecimalInput(withdrawAmount);
+    if (!amount || Number(amount) <= 0 || depositTx.isBusy || withdrawTx.isBusy) return;
+
+    try {
+      const hash = await withdrawTx.execute({
         address: vaultAddress,
         abi: AGENT_STAKE_VAULT_ABI,
         functionName: 'withdraw',
-        args: [parseEther(withdrawAmount)],
-      },
-      {
-        onSuccess(hash) {
-          setLocalEvents((prev) =>
-            [
-              { label: 'Withdraw submitted', value: shortHash(hash), tone: 'primary' as const },
-              ...prev,
-            ].slice(0, 4),
-          );
-          void refetchDeposit();
-        },
-      },
-    );
+        args: [parseEther(amount)],
+      });
+      setLocalEvents((prev) =>
+        [{ label: 'Withdraw submitted', value: shortHash(hash), tone: 'primary' as const }, ...prev].slice(
+          0,
+          4,
+        ),
+      );
+    } catch (error) {
+      setLocalEvents((prev) =>
+        [
+          { label: 'Withdraw failed', value: getErrorMessage(error), tone: 'danger' as const },
+          ...prev,
+        ].slice(0, 4),
+      );
+    }
   };
 
   return (
@@ -215,7 +249,9 @@ export default function StakePage() {
                   withdrawAmount={withdrawAmount}
                   setWithdrawAmount={setWithdrawAmount}
                   isConnected={walletConnected}
-                  isPending={isPending}
+                  depositStep={depositTx.step}
+                  withdrawStep={withdrawTx.step}
+                  isPending={depositTx.isBusy || withdrawTx.isBusy}
                   onDeposit={submitDeposit}
                   onWithdraw={submitWithdraw}
                 />
@@ -372,6 +408,8 @@ function NodeConfigPanel({
   withdrawAmount,
   setWithdrawAmount,
   isConnected,
+  depositStep,
+  withdrawStep,
   isPending,
   onDeposit,
   onWithdraw,
@@ -385,6 +423,8 @@ function NodeConfigPanel({
   withdrawAmount: string;
   setWithdrawAmount: (value: string) => void;
   isConnected: boolean;
+  depositStep: ReturnType<typeof useContractAction>['step'];
+  withdrawStep: ReturnType<typeof useContractAction>['step'];
   isPending: boolean;
   onDeposit: () => void;
   onWithdraw: () => void;
@@ -444,7 +484,8 @@ function NodeConfigPanel({
           disabled={!isConnected || isPending}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded bg-primary px-4 font-display text-sm font-black text-on-primary transition-colors hover:bg-primary-muted disabled:cursor-not-allowed disabled:opacity-45"
         >
-          Deposit Stake <Coins size={14} />
+          {depositStep === 'idle' ? 'Deposit Stake' : getContractActionLabel(depositStep)}
+          <Coins size={14} />
         </button>
 
         <AmountInput
@@ -459,7 +500,8 @@ function NodeConfigPanel({
           disabled={!isConnected || isPending}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded border border-primary/35 px-4 font-display text-sm font-black text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-45"
         >
-          Withdraw Available <Wallet size={14} />
+          {withdrawStep === 'idle' ? 'Withdraw Available' : getContractActionLabel(withdrawStep)}
+          <Wallet size={14} />
         </button>
       </div>
     </section>
@@ -838,4 +880,8 @@ function shortAddress(value?: string) {
 function shortHash(value: string) {
   if (value.length <= 14) return value;
   return `${value.slice(0, 8)}...${value.slice(-6)}`;
+}
+
+function normalizeDecimalInput(value: string) {
+  return value.trim().replace(',', '.');
 }

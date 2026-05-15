@@ -195,6 +195,14 @@ export default function TaskEscrowScreen({
     }
   };
 
+  const updateTaskRoute = (filter: TaskCategory, taskId?: number, hash = 'escrow-registry') => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('filter', filter);
+    if (taskId !== undefined) params.set('task', String(taskId));
+    else params.delete('task');
+    window.history.pushState(null, '', `/tasks?${params.toString()}#${hash}`);
+  };
+
   const loading = isLoading;
 
   return (
@@ -313,12 +321,14 @@ export default function TaskEscrowScreen({
                     href={`/tasks?filter=${filter.key}${
                       selectedTask ? `&task=${selectedTask.id}` : ''
                     }#escrow-registry`}
-                    onClick={() => {
+                    onClick={(event) => {
+                      event.preventDefault();
                       setActiveFilter(filter.key);
                       const nextTask = tasks.find(
                         (task) => getTaskMeta(task.status).category === filter.key,
                       );
                       if (nextTask) setSelectedTaskId(nextTask.id);
+                      updateTaskRoute(filter.key, nextTask?.id);
                     }}
                     className={cn(
                       'px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors',
@@ -339,7 +349,10 @@ export default function TaskEscrowScreen({
               isLoading={loading}
               error={error}
               activeFilter={activeFilter}
-              onSelect={setSelectedTaskId}
+              onSelect={(taskId) => {
+                setSelectedTaskId(taskId);
+                updateTaskRoute(activeFilter, taskId, 'escrow-detail');
+              }}
             />
           </section>
         </div>
@@ -955,7 +968,11 @@ function TaskRegistry({
           <a
             key={task.id}
             href={`/tasks?filter=${activeFilter}&task=${task.id}#escrow-detail`}
-            onClick={() => onSelect(task.id)}
+            onClick={(event) => {
+              event.preventDefault();
+              onSelect(task.id);
+              document.getElementById('escrow-detail')?.scrollIntoView({ block: 'start' });
+            }}
             className={cn(
               'group grid w-full gap-4 p-5 text-left transition-colors hover:bg-surface md:grid-cols-[1.2fr_0.75fr_0.75fr_auto]',
               selected && 'bg-primary/5',

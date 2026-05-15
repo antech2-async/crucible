@@ -4,10 +4,17 @@ import React from 'react';
 import { useParams } from 'next/navigation';
 import { Shield, ExternalLink, Award, AlertOctagon, Cpu, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import TrustChart from '@/components/TrustChart';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { Surface, TierChip, LabelStat, SectionHeader } from '@/components/ui';
 import { useAgentQuery } from '@/features/agents/queries';
+
+const TrustChart = dynamic(() => import('@/components/TrustChart'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[320px] animate-pulse rounded border border-border bg-surface-container" />
+  ),
+});
 
 const TIER_LABELS = ['Basic', 'Uncommon', 'Rare', 'Epic', 'Mythic'];
 const TIER_COLORS = [

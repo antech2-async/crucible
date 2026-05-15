@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import type { TaskApiResponse } from './types';
+import { apiJson } from '@/lib/api';
 
 export const TASKS_REFETCH_INTERVAL = 10_000;
 
@@ -10,14 +11,8 @@ export const taskKeys = {
   escrowSnapshot: () => [...taskKeys.all, 'escrow-snapshot'] as const,
 };
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Request failed: ${url}`);
-  return res.json() as Promise<T>;
-}
-
 export function fetchTaskEscrowSnapshot() {
-  return fetchJson<TaskApiResponse>('/api/tasks');
+  return apiJson<TaskApiResponse>('/api/tasks');
 }
 
 export function useTaskEscrowQuery(initialData?: TaskApiResponse) {
@@ -30,4 +25,3 @@ export function useTaskEscrowQuery(initialData?: TaskApiResponse) {
     staleTime: 5_000,
   });
 }
-
