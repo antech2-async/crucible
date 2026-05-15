@@ -17,24 +17,13 @@ import {
   Trophy,
   Zap,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import { TierChip } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { useAgentsQuery } from '@/features/agents/queries';
+import type { AgentTelemetry } from '@/features/agents/types';
+import { rankOfAgent } from '@/features/agents/utils';
 
 type AgentFilter = 'all' | 'elite' | 'active';
-
-type AgentTelemetry = {
-  id: string;
-  address?: string;
-  tier: number;
-  score: number;
-  tasks: number;
-  status: 'idle' | 'working' | 'slashed' | 'offline' | string;
-  window: number[];
-  class: 'native' | 'external' | string;
-  minStake?: string;
-  capabilities?: string[];
-};
 
 const FILTERS: Array<{ key: AgentFilter; label: string }> = [
   { key: 'all', label: 'All' },
@@ -46,22 +35,7 @@ export default function AgentsPage() {
   const [filter, setFilter] = useState<AgentFilter>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
-  const {
-    data: agentsPayload = [],
-    isLoading,
-    isError,
-  } = useQuery<AgentTelemetry[]>({
-    queryKey: ['agents'],
-    queryFn: async () => {
-      const res = await fetch('/api/agents');
-      if (!res.ok) throw new Error('Failed to fetch agents');
-      const payload = await res.json();
-      return Array.isArray(payload) ? payload : [];
-    },
-    refetchInterval: 10000,
-  });
-
-  const agents = useMemo(() => agentsPayload.map(normalizeAgent), [agentsPayload]);
+  const { data: agents = [], isLoading, isError } = useAgentsQuery();
 
   const filteredAgents = useMemo(
     () =>
@@ -801,25 +775,6 @@ function buildOperationEvents(agent: AgentTelemetry) {
           ? 'Criteria check accepted by trust history.'
           : 'Failure recorded in trust history.',
     }));
-}
-
-function normalizeAgent(agent: AgentTelemetry): AgentTelemetry {
-  return {
-    ...agent,
-    id: agent.id || agent.address || 'unknown-agent',
-    tier: Number.isFinite(Number(agent.tier)) ? Number(agent.tier) : 0,
-    score: Math.max(0, Math.min(1, Number(agent.score) || 0)),
-    tasks: Number.isFinite(Number(agent.tasks)) ? Number(agent.tasks) : 0,
-    window: Array.isArray(agent.window) ? agent.window : [],
-    class: agent.class === 'native' ? 'native' : 'external',
-    status: agent.status || 'offline',
-  };
-}
-
-function rankOfAgent(agent: AgentTelemetry, agents: AgentTelemetry[]) {
-  return (
-    [...agents].sort((a, b) => b.score - a.score).findIndex((item) => item.id === agent.id) + 1
-  );
 }
 
 function _recentIntegrity(window: number[]) {

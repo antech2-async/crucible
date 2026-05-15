@@ -17,70 +17,15 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import { formatEther } from 'viem';
 import { TaskStatus } from '@crucible/shared';
 import PostTaskForm from '@/components/PostTaskForm';
 import { cn } from '@/lib/utils';
+import { useTaskEscrowQuery } from '@/features/tasks/queries';
+import { normalizeTasks } from '@/features/tasks/utils';
+import type { EscrowTask, TaskApiResponse, TaskCategory, TaskProof } from '@/features/tasks/types';
 
-type TaskCategory = 'open' | 'verifying' | 'completed';
-type VerificationMode = 'tee-attestation' | 'hash-commitment' | 'missing';
 type StepState = 'complete' | 'active' | 'pending' | 'danger';
-
-export type TaskProof = {
-  agent: string;
-  agentClass: 'native' | 'external' | 'unknown';
-  submitted: boolean;
-  outputHash: string;
-  attestationHex: string;
-  attestationText?: string;
-  verificationMode: VerificationMode;
-  auditPassed?: boolean;
-  auditReasons: string[];
-};
-
-type EscrowTask = {
-  id: number;
-  poster: `0x${string}`;
-  totalPayment: bigint;
-  deadline: bigint;
-  status: number;
-  criteriaHash: `0x${string}`;
-  criteriaURI: string;
-  isSequential: boolean;
-  assignedAgents: `0x${string}`[];
-  agentStakes: bigint[];
-  submittedCount: number;
-  auditReport?: any;
-  proofs: TaskProof[];
-};
-
-export type TaskApiTask = {
-  id: number;
-  poster: string;
-  totalPayment: string;
-  deadline: string;
-  status: number;
-  criteriaHash: string;
-  criteriaURI: string;
-  isSequential: boolean;
-  assignedAgents: string[];
-  agentStakes: string[];
-  submittedCount: number;
-  auditReport?: any;
-  proofs?: TaskProof[];
-};
-
-export type TaskApiResponse = {
-  taskCount: number;
-  protocol: {
-    protocolFeePercent: string;
-    defaultDisputeWindow: string;
-    slashingJudge: string;
-    assignmentEngine: string;
-  };
-  tasks: TaskApiTask[];
-};
 
 const TASK_STATUS_META: Record<
   number,
@@ -165,36 +110,10 @@ export default function TaskEscrowScreen({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { data, error, isLoading, refetch } = useQuery<TaskApiResponse>({
-    queryKey: ['escrow-tasks'],
-    initialData,
-    initialDataUpdatedAt: 0,
-    refetchInterval: 10000,
-    staleTime: 5000,
-    queryFn: async () => {
-      const res = await fetch('/api/tasks');
-      if (!res.ok) throw new Error('Failed to fetch tasks');
-      return res.json();
-    },
-  });
+  const { data, error, isLoading, refetch } = useTaskEscrowQuery(initialData);
 
   const tasks = useMemo<EscrowTask[]>(
-    () =>
-      (data?.tasks ?? []).map((task) => ({
-        id: task.id,
-        poster: task.poster as `0x${string}`,
-        totalPayment: BigInt(task.totalPayment),
-        deadline: BigInt(task.deadline),
-        status: task.status,
-        criteriaHash: task.criteriaHash as `0x${string}`,
-        criteriaURI: task.criteriaURI,
-        isSequential: task.isSequential,
-        assignedAgents: task.assignedAgents as `0x${string}`[],
-        agentStakes: task.agentStakes.map((stake) => BigInt(stake)),
-        submittedCount: task.submittedCount,
-        auditReport: task.auditReport,
-        proofs: task.proofs ?? [],
-      })),
+    () => normalizeTasks(data?.tasks),
     [data?.tasks],
   );
 

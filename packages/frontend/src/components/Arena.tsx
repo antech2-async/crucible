@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Activity,
   ChevronRight,
@@ -18,17 +18,10 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { MeshVisualizer } from './MeshVisualizer';
 import TaskCard from './TaskCard';
-
-type DashboardAgent = {
-  id: string;
-  address?: string;
-  tier: number;
-  score: number;
-  status: 'idle' | 'working' | 'slashed' | 'offline';
-  tasks?: number;
-  class?: string;
-  minStake?: string;
-};
+import { useQueryClient } from '@tanstack/react-query';
+import { agentKeys, useAgentsQuery } from '@/features/agents/queries';
+import { taskKeys, useTaskEscrowQuery } from '@/features/tasks/queries';
+import type { AgentTelemetry } from '@/features/agents/types';
 
 const FALLBACK_EVENTS = [
   {
@@ -40,10 +33,12 @@ const FALLBACK_EVENTS = [
 ];
 
 export default function Arena() {
-  const [agents, setAgents] = useState<DashboardAgent[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [networkShock, setNetworkShock] = useState(false);
-  const [latestTasks, setLatestTasks] = useState<any[]>([]);
+  const queryClient = useQueryClient();
+  const { data: agents = [] } = useAgentsQuery();
+  const { data: taskSnapshot } = useTaskEscrowQuery();
+  const latestTasks = taskSnapshot?.tasks ?? [];
 
   const { data: agentList } = useReadContract({
     address: CONTRACT_ADDRESSES.AGENT_REGISTRY as `0x${string}`,
@@ -65,6 +60,8 @@ export default function Arena() {
     onLogs(logs: any) {
       const log = logs[0];
       const isSlash = log.eventName === 'AgentSlashed';
+      void queryClient.invalidateQueries({ queryKey: taskKeys.escrowSnapshot() });
+      if (isSlash) void queryClient.invalidateQueries({ queryKey: agentKeys.list() });
       const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
       setEvents((prev) =>
         [
@@ -92,6 +89,7 @@ export default function Arena() {
     onLogs(logs: any) {
       const log = logs[0];
       if (log.eventName === 'TrustTierUpdated') {
+        void queryClient.invalidateQueries({ queryKey: agentKeys.list() });
         const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
         setEvents((prev) =>
           [
@@ -108,38 +106,6 @@ export default function Arena() {
     },
   });
 
-  useEffect(() => {
-    async function fetchAgents() {
-      try {
-        const res = await fetch('/api/agents');
-        if (!res.ok) throw new Error('fetch failed');
-        const payload = await res.json();
-        setAgents(Array.isArray(payload) ? payload : []);
-      } catch (err) {
-        console.error('Failed to sync agent telemetry', err);
-      }
-    }
-
-    async function fetchTasks() {
-      try {
-        const res = await fetch('/api/tasks');
-        if (!res.ok) throw new Error('fetch tasks failed');
-        const payload = await res.json();
-        setLatestTasks(payload.tasks || []);
-      } catch (err) {
-        console.error('Failed to sync tasks', err);
-      }
-    }
-
-    fetchAgents();
-    fetchTasks();
-    const id = setInterval(() => {
-      fetchAgents();
-      fetchTasks();
-    }, 10000);
-    return () => clearInterval(id);
-  }, []);
-
   const liveEvents = events.length ? events : FALLBACK_EVENTS;
 
   const avgTrust = useMemo(() => {
@@ -148,7 +114,7 @@ export default function Arena() {
   }, [agents]);
 
   const activeNodesNum = totalAgents > 0 ? totalAgents : agents.length;
-  const taskCountValue = taskCount ? Number(taskCount) : 0;
+  const taskCountValue = taskSnapshot?.taskCount ?? (taskCount ? Number(taskCount) : 0);
 
   const systemLoad = useMemo(() => {
     if (activeNodesNum === 0) return { val: 0, str: '0.0%' };
@@ -505,7 +471,7 @@ function LiveEventRow({ event, index }: { event: any; index: number }) {
   );
 }
 
-function CriticalAgentRow({ agent }: { agent: DashboardAgent }) {
+function CriticalAgentRow({ agent }: { agent: AgentTelemetry }) {
   const score = Math.round(agent.score * 1000) / 10;
   const isStable = score >= 90;
   const tone = isStable ? 'secondary' : 'primary';
