@@ -1,0 +1,23 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="crucible-bg" x1="152.6" y1="44.5" x2="871.4" y2="979.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFB000" stop-opacity="0.22" />
+      <stop offset="0.58" stop-color="#201F1E" stop-opacity="0.92" />
+      <stop offset="1" stop-color="#71D7CD" stop-opacity="0.16" />
+    </linearGradient>
+    <radialGradient id="crucible-radial" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(300 230) rotate(48) scale(450)">
+      <stop offset="0" stop-color="#FFD597" stop-opacity="0.26" />
+      <stop offset="0.32" stop-color="#FFD597" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="52" fill="url(#crucible-bg)" />
+  <rect width="1024" height="1024" rx="52" fill="url(#crucible-radial)" opacity="0.8" />
+  <rect x="12" y="12" width="1000" height="1000" rx="40" stroke="#FFB000" stroke-opacity="0.25" stroke-width="24" />
+
+  <g transform="translate(102.4 102.4) scale(20.48)">
+    <path d="M20 3.8 33.9 11.9v16.2L20 36.2 6.1 28.1V11.9L20 3.8Z" fill="none" stroke="#FFB000" stroke-width="2" stroke-linejoin="round" opacity="0.95" />
+    <path d="M20 10.3c-4.5 1.9-6.8 4.9-6.8 8.9 0 4.7 3.2 7.9 7.5 7.9 3.2 0 5.8-1.7 7.1-4.6h-5.1c-.6.6-1.3.9-2.2.9-2 0-3.3-1.6-3.3-4.1 0-2.4 1.3-4.1 3.3-4.1 1 0 1.8.4 2.4 1.1h5C26.8 13 24.1 10.9 20 10.3Z" fill="#FFB000" />
+    <path d="M24.6 6.8 17 20.3h5.4L15.8 33" fill="none" stroke="#71D7CD" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+  </g>
+</svg>
