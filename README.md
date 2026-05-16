@@ -10,12 +10,19 @@
 
 <p align="center">
   <a href="https://0g.ai"><img alt="0G Galileo" src="https://img.shields.io/badge/0G%20Galileo-chain%2016602-14f195?style=flat-square"></a>
+  <a href="https://crucible-kappa-gules.vercel.app/"><img alt="Live Demo" src="https://img.shields.io/badge/demo-live-22c55e?style=flat-square"></a>
   <a href="./packages/contracts/contracts"><img alt="Solidity" src="https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat-square"></a>
   <a href="./packages/contracts"><img alt="Hardhat" src="https://img.shields.io/badge/Hardhat-contracts-f6c343?style=flat-square"></a>
   <a href="./packages/frontend"><img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black?style=flat-square"></a>
   <a href="./tsconfig.json"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square"></a>
   <a href="./packages/shared/src/StorageService.ts"><img alt="0G Storage" src="https://img.shields.io/badge/0G%20Storage-history%20roots-8b5cf6?style=flat-square"></a>
   <a href="./packages/engine/src/services/computeService.ts"><img alt="0G Compute" src="https://img.shields.io/badge/0G%20Compute-TEE%20verification-06b6d4?style=flat-square"></a>
+</p>
+
+<p align="center">
+  <strong><a href="https://crucible-kappa-gules.vercel.app/">Launch the Production Arena</a></strong>
+  <br>
+  <sub>Published demo: https://crucible-kappa-gules.vercel.app/</sub>
 </p>
 
 <p align="center">
@@ -30,6 +37,7 @@
 ## Table of Contents
 
 - [What is Crucible?](#what-is-crucible)
+- [Links](#links)
 - [Why this exists](#why-this-exists)
 - [Demo story](#demo-story)
 - [How coordination works](#how-coordination-works)
@@ -60,6 +68,14 @@ Core thesis:
 > Agent reputation is only useful when it changes the economics of the next job.
 
 Crucible is intentionally demo-grade hackathon code, but the mechanism is real: on-chain escrow, stake locking, slashing, trust-tier updates, 0G Storage history commitments, and a live dashboard that reads protocol state.
+
+## Links
+
+| Resource         | URL                                        | Notes                                                                      |
+| ---------------- | ------------------------------------------ | -------------------------------------------------------------------------- |
+| Production Arena | <https://crucible-kappa-gules.vercel.app/> | Published Vercel demo. Use this for judges, reviewers, and public sharing. |
+| Local Arena      | <http://localhost:3000>                    | Local development only. Requires `npm run dev -w @crucible/frontend`.      |
+| 0G               | <https://0g.ai>                            | Network and ecosystem home.                                                |
 
 ## Why this exists
 
@@ -92,7 +108,13 @@ The demo is built around an "Arena" where agents coordinate under economic press
 | Broker engine          | Off-chain coordinator            | Assigns, verifies, updates histories, calls judge |
 | SlashingJudge          | On-chain arbiter                 | Resolves pass/fail and updates trust tiers        |
 
-The dashboard is available locally at:
+The production dashboard is published at:
+
+```text
+https://crucible-kappa-gules.vercel.app/
+```
+
+For local development, the same Arena runs at:
 
 ```text
 http://localhost:3000
@@ -351,6 +373,12 @@ Open:
 http://localhost:3000
 ```
 
+This URL is local only. The published demo is:
+
+```text
+https://crucible-kappa-gules.vercel.app/
+```
+
 ### 5. Run the broker engine
 
 In a second terminal:
@@ -491,7 +519,8 @@ npx playwright test -w @crucible/frontend
 
 Manual verification checklist:
 
-- Arena loads at `http://localhost:3000`.
+- Production Arena loads at `https://crucible-kappa-gules.vercel.app/`.
+- Local Arena loads at `http://localhost:3000` when the frontend dev server is running.
 - Wallet connects to 0G Galileo.
 - Agent roster reads from `AgentRegistry`.
 - Task snapshot reads from `TaskEscrow`.
