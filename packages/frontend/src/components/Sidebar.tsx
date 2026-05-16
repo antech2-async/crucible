@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Coins, FileText, HelpCircle, Settings, Swords, Terminal, Users, X } from 'lucide-react';
+import { Coins, FileText, Gavel, HelpCircle, Swords, Terminal, Users, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Tasks', href: '/tasks', icon: FileText },
   { name: 'Stake', href: '/stake', icon: Coins },
-  { name: 'Admin', href: '/admin', icon: Settings },
+  { name: 'Review', href: '/admin', icon: Gavel },
 ];
 
 interface SidebarProps {

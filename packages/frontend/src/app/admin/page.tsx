@@ -4,7 +4,7 @@ import React from 'react';
 import { AlertTriangle, Gavel, ShieldCheck } from 'lucide-react';
 import { Button, SectionHeader, Surface } from '@/components/ui';
 
-export default function AdminHub() {
+export default function ReviewHub() {
   const disputedTasks = [
     {
       id: 'TASK-882',
@@ -24,7 +24,7 @@ export default function AdminHub() {
         </div>
         <div>
           <h1 className="font-display text-2xl font-bold uppercase tracking-widest text-on-surface">
-            Operator Review
+            Dispute Review
           </h1>
           <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-on-surface-muted">
             Contract-gated slashing and dispute monitor
@@ -38,7 +38,7 @@ export default function AdminHub() {
           <div className="space-y-3">
             <div>
               <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-primary">
-                Who can slash an agent?
+                Who can resolve a slash?
               </p>
               <p className="mt-1 max-w-3xl text-sm leading-relaxed text-on-surface-muted">
                 Not everyone. Normal verification slashing goes through the deployed SlashingJudge.
@@ -70,7 +70,7 @@ export default function AdminHub() {
             title="Poster Dispute Queue"
             action={
               <span className="border border-danger/30 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-danger">
-                Operator Review
+                Review Required
               </span>
             }
           />
